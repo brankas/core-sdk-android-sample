@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#23AE3A</color>
+    <color name="colorPrimaryDark">#23AE3A</color>
+    <color name="colorAccent">#03DAC5</color>
+    <color name="disabledButton">#B5B5B5</color>
+    <color name="hintTextColor">#990A0016</color>
+    <color name="textColor">#0A0016</color>
+    <color name="errorTextColor">#F24137</color>
+    <color name="overlay_black_dark">#77000000</color>
+</resources>

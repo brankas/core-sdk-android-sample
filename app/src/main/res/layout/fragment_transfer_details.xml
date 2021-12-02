@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="@dimen/fragment_horizontal_margin"
+    android:paddingTop="@dimen/fragment_vertical_margin"
+    android:paddingRight="@dimen/fragment_horizontal_margin"
+    android:paddingBottom="@dimen/fragment_vertical_margin"
+    tools:context=".fragment.TransferDetailsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.brankas.testapp.customview.BoxedEditText
+            android:id="@+id/destinationAccountId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nextFocusDown="@id/amount"
+            app:hint="@string/destination_account_id" />
+
+        <com.brankas.testapp.customview.BoxedEditText
+            android:id="@+id/amount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp_20"
+            android:nextFocusDown="@id/memo"
+            app:hint="@string/amount"
+            app:inputType="number" />
+
+        <com.brankas.testapp.customview.BoxedEditText
+            android:id="@+id/memo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp_20"
+            android:nextFocusDown="@id/email"
+            app:hint="@string/memo" />
+
+        <com.brankas.testapp.customview.BoxedEditText
+            android:id="@+id/referenceId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp_20"
+            android:nextFocusDown="@id/destinationAccountId"
+            app:hint="@string/reference_id" />
+    </LinearLayout>
+
+</ScrollView>
