@@ -3,6 +3,7 @@
     <string-array name="countries">
         <item>Philippines</item>
         <item>Indonesia</item>
+        <item>Thailand</item>
     </string-array>
 
     <string-array name="idBanks">

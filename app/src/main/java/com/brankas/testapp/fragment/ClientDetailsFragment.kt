@@ -17,7 +17,6 @@ class ClientDetailsFragment: BaseFragment() {
     override fun showError(tag: String?) {
         tag?.let {
             when(it) {
-                LOGO_URL -> logoUrl.showError(getString(R.string.invalid_url_format))
                 RETURN_URL -> returnUrl.showError(getString(R.string.invalid_url_format))
                 FAIL_URL -> failUrl.showError(getString(R.string.invalid_url_format))
             }
@@ -25,31 +24,32 @@ class ClientDetailsFragment: BaseFragment() {
     }
 
     override fun autoFill() {
-        displayName.setText("Display Name")
-        returnUrl.setText("google.com.ph")
-        failUrl.setText("www.hello.com")
+        displayName.setText("Sample Organization")
+        returnUrl.setText("http://google.com.ph")
+        failUrl.setText("http://hello.com")
+        externalId.setText("Sample External ID")
     }
 
     override fun getFieldsMap(): HashMap<String, Any> {
         val hashMap = hashMapOf<String, Any>()
         hashMap[DISPLAY_NAME] = displayName
-        hashMap[LOGO_URL] = logoUrl
+        hashMap[EXTERNAL_ID] = externalId
         hashMap[RETURN_URL] = returnUrl
         hashMap[FAIL_URL] = failUrl
         return hashMap
     }
 
     override fun getOptionalFields(): List<String> {
-        return listOf(DISPLAY_NAME, LOGO_URL, RETURN_URL, FAIL_URL)
+        return listOf()
     }
 
     override fun getPage(): Int {
-        return 2
+        return 1
     }
 
     companion object {
         const val DISPLAY_NAME = "display_name"
-        const val LOGO_URL = "logo_url"
+        const val EXTERNAL_ID = "external_id"
         const val RETURN_URL = "return_url"
         const val FAIL_URL = "fail_url"
 

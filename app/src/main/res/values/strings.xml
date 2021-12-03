@@ -18,11 +18,11 @@
     <string name="enter_transfer_details">Enter Transfer Details</string>
 
     <!-- pIDP CUSTOMIZATION DETAILS -->
-    <string name="display_name">Display Name (Optional)</string>
-    <string name="logoUrl">Logo URL (Optional)</string>
-    <string name="return_url">Return URL (Optional)</string>
-    <string name="fail_url">Fail URL (Optional)</string>
-    <string name="enter_pidp_details">Enter pIDP Customization Details</string>
+    <string name="display_name">Organizational Name</string>
+    <string name="return_url">Return URL</string>
+    <string name="fail_url">Fail URL</string>
+    <string name="external_id">External ID</string>
+    <string name="enter_pidp_details">Enter Tap Customization Details</string>
     <string name="invalid_url_format">Invalid URL Format</string>
 
     <!-- BUTTON LABELS -->

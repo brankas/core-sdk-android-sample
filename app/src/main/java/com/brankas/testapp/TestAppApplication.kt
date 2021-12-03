@@ -1,6 +1,6 @@
 package com.brankas.testapp
 
-import `as`.brank.sdk.tap.direct.DirectTapSDK
+import `as`.brank.sdk.tap.statement.StatementTapSDK
 import android.app.Application
 
 class TestAppApplication: Application() {
@@ -21,12 +21,11 @@ class TestAppApplication: Application() {
 
     fun updateTap(isDebug: Boolean) {
         this.isDebug = isDebug
-        DirectTapSDK.initialize(this, if(isDebug) Constants.API_KEY_SANDBOX_DIRECT else
-            Constants.API_KEY_DIRECT, null, isDebug)
+        StatementTapSDK.initialize(this, if(isDebug) Constants.API_KEY_SANDBOX else
+            Constants.API_KEY, null, isDebug)
     }
 
     fun getDestinationAccountId(): String {
-        return if(isDebug) Constants.DESTINATION_ACCOUNT_ID_SANDBOX else
-            Constants.DESTINATION_ACCOUNT_ID
+        return "";
     }
 }

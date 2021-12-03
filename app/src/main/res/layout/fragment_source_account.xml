@@ -16,43 +16,9 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.brankas.testapp.customview.BoxedEditText
-            android:id="@+id/firstName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:nextFocusDown="@string/last_name"
-            app:hint="@string/first_name" />
-
-        <com.brankas.testapp.customview.BoxedEditText
-            android:id="@+id/lastName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_20"
-            android:nextFocusDown="@id/email"
-            app:hint="@string/last_name" />
-
-        <com.brankas.testapp.customview.BoxedEditText
-            android:id="@+id/email"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_20"
-            android:nextFocusDown="@id/mobileNumber"
-            app:hint="@string/email"
-            app:inputType="email" />
-
-        <com.brankas.testapp.customview.BoxedEditText
-            android:id="@+id/mobileNumber"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_20"
-            android:nextFocusDown="@id/firstName"
-            app:hint="@string/mobile_number"
-            app:inputType="phone" />
-
         <androidx.appcompat.widget.AppCompatTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_20"
             android:text="Country: "
             android:textColor="@android:color/white"
             android:textSize="@dimen/sp_14"
@@ -60,22 +26,6 @@
 
         <androidx.appcompat.widget.AppCompatSpinner
             android:id="@+id/countrySpinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_5"
-            android:background="@drawable/background_spinner" />
-
-        <androidx.appcompat.widget.AppCompatTextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp_20"
-            android:text="Bank: "
-            android:textColor="@android:color/white"
-            android:textSize="@dimen/sp_14"
-            android:textStyle="bold" />
-
-        <androidx.appcompat.widget.AppCompatSpinner
-            android:id="@+id/bankSpinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/dp_5"

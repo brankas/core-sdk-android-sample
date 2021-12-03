@@ -20,16 +20,16 @@
             android:id="@+id/displayName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:nextFocusDown="@id/logoUrl"
+            android:nextFocusDown="@id/externalId"
             app:hint="@string/display_name" />
 
         <com.brankas.testapp.customview.BoxedEditText
-            android:id="@+id/logoUrl"
+            android:id="@+id/externalId"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/dp_20"
             android:nextFocusDown="@id/returnUrl"
-            app:hint="@string/logoUrl"
+            app:hint="@string/external_id"
             app:inputType="uri" />
 
         <com.brankas.testapp.customview.BoxedEditText

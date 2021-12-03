@@ -7,7 +7,6 @@ import com.brankas.testapp.`interface`.ScreenListener
 import com.brankas.testapp.fragment.BaseFragment
 import com.brankas.testapp.fragment.ClientDetailsFragment
 import com.brankas.testapp.fragment.SourceAccountFragment
-import com.brankas.testapp.fragment.TransferDetailsFragment
 
 /**
  * Author: Ejay Torres
@@ -25,7 +24,7 @@ import com.brankas.testapp.fragment.TransferDetailsFragment
  */
 class CustomPagerAdapter(fragmentManager: FragmentManager, private val screenListener: ScreenListener) :
     FragmentStatePagerAdapter(fragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
-    private val numPages = 3
+    private val numPages = 2
 
     val fragments = hashMapOf<Int, BaseFragment?>()
 
@@ -38,8 +37,7 @@ class CustomPagerAdapter(fragmentManager: FragmentManager, private val screenLis
         if(!fragments.containsKey(position)) {
             fragments[position] = when (position) {
                 0 -> SourceAccountFragment.newInstance(screenListener)
-                1 -> TransferDetailsFragment.newInstance(screenListener)
-                2 -> ClientDetailsFragment.newInstance(screenListener)
+                1 -> ClientDetailsFragment.newInstance(screenListener)
                 else -> null
             }
         }

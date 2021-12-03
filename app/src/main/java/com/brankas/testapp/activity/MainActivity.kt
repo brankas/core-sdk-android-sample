@@ -2,7 +2,7 @@ package com.brankas.testapp.activity
 
 import `as`.brank.sdk.core.CoreError
 import `as`.brank.sdk.tap.TapListener
-import `as`.brank.sdk.tap.direct.DirectTapSDK
+import `as`.brank.sdk.tap.statement.StatementTapSDK
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -16,25 +16,17 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager.widget.ViewPager
-import com.badoualy.stepperindicator.BuildConfig
 import com.brankas.testapp.*
 import com.brankas.testapp.`interface`.ScreenListener
 import com.brankas.testapp.adapter.CustomPagerAdapter
 import com.brankas.testapp.fragment.BaseFragment
 import com.brankas.testapp.fragment.ClientDetailsFragment
 import com.brankas.testapp.fragment.SourceAccountFragment
-import com.brankas.testapp.fragment.TransferDetailsFragment
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import tap.common.*
-import tap.common.direct.Account
-import tap.common.direct.Amount
-import tap.common.direct.Client
-import tap.common.direct.Currency
-import tap.common.direct.Customer
-import tap.direct.DirectTapRequest
+import tap.statement.StatementTapRequest
 import java.util.*
-import kotlin.collections.HashMap
 
 /**
  * Author: Ejay Torres
@@ -60,8 +52,7 @@ class MainActivity : FragmentActivity() {
      * Constants pertaining to pages or screens of the [viewPager]
      */
     private val sourceAccountInfo = 0
-    private val transferDetailsInfo = 1
-    private val clientDetailsInfo = 2
+    private val clientDetailsInfo = 1
 
     private var isCheckoutClicked = false
 
@@ -72,7 +63,7 @@ class MainActivity : FragmentActivity() {
         setContentView(R.layout.activity_main)
 
         // Provide API KEY
-        if(Constants.API_KEY_DIRECT.isEmpty()) {
+        if(Constants.API_KEY.isEmpty()) {
             showMessage("Please provide API Key inside Constants class!")
             Handler().postDelayed({
                 finish()
@@ -83,7 +74,8 @@ class MainActivity : FragmentActivity() {
             addConfirmButtonListener()
             addBackButtonListener()
             addSwitchListener()
-            addAutoFillListener()
+            if (BuildConfig.AUTO_FILL_ENABLED)
+                addAutoFillListener()
         }
     }
 
@@ -127,17 +119,12 @@ class MainActivity : FragmentActivity() {
                 back.visibility = if(position > 0) View.VISIBLE else View.GONE
                 fillText.text = when (position) {
                     sourceAccountInfo -> getString(R.string.enter_source_account_information)
-                    transferDetailsInfo -> getString(R.string.enter_transfer_details)
                     clientDetailsInfo -> getString(R.string.enter_pidp_details)
                     else -> ""
                 }
                 confirmButton.text = getString(if(position == clientDetailsInfo)
                     R.string.checkout else R.string.next
                 )
-
-                if(position == transferDetailsInfo)
-                    (getViewPagerFragment(transferDetailsInfo) as TransferDetailsFragment)
-                        .addAmountPrefix(getCurrency(map[SourceAccountFragment.COUNTRY]!!).name)
             }
 
             override fun onPageScrollStateChanged(state: Int) {}
@@ -150,30 +137,18 @@ class MainActivity : FragmentActivity() {
         confirmButton.setOnClickListener {
             when (viewPager.currentItem) {
                 sourceAccountInfo -> {
-                    if(Patterns.EMAIL_ADDRESS.matcher(map[SourceAccountFragment.EMAIL]).matches())
-                        showPage(transferDetailsInfo)
-                    else
-                        showError(SourceAccountFragment.EMAIL)
-                }
-                transferDetailsInfo -> {
-                    if(map[TransferDetailsFragment.DESTINATION_ACCOUNT_ID]?.length ==
-                        TransferDetailsFragment.MAX_DESTINATION_ACCOUNT_ID)
-                            showPage(clientDetailsInfo)
-                    else
-                        showError(TransferDetailsFragment.DESTINATION_ACCOUNT_ID)
+                    showPage(clientDetailsInfo)
                 }
                 clientDetailsInfo -> {
-                    val logoUrl = map[ClientDetailsFragment.LOGO_URL]
                     val returnUrl = map[ClientDetailsFragment.RETURN_URL]
                     val failUrl = map[ClientDetailsFragment.FAIL_URL]
 
-                    var counter = 3
+                    var counter = 2
 
-                    counter = checkWebPattern(logoUrl, ClientDetailsFragment.LOGO_URL, counter)
                     counter = checkWebPattern(returnUrl, ClientDetailsFragment.RETURN_URL, counter)
                     counter = checkWebPattern(failUrl, ClientDetailsFragment.FAIL_URL, counter)
 
-                    if(counter == 3)
+                    if(counter == 2)
                         checkout()
                 }
             }
@@ -218,31 +193,18 @@ class MainActivity : FragmentActivity() {
 
     private fun checkout() {
         showProgress(true)
-        val request = DirectTapRequest.Builder()
-            .sourceAccount(createAccount())
-            .destinationAccountId(map[TransferDetailsFragment.DESTINATION_ACCOUNT_ID]!!)
-            .amount(createAmount(map[SourceAccountFragment.COUNTRY]!!,
-                map[TransferDetailsFragment.AMOUNT]!!))
-            .memo(map[TransferDetailsFragment.MEMO]!!)
-            .customer(createCustomer(map[SourceAccountFragment.FIRST_NAME]!!,
-                map[SourceAccountFragment.LAST_NAME]!!, map[SourceAccountFragment.EMAIL]!!,
-                map[SourceAccountFragment.MOBILE_NUMBER]!!))
-            .referenceId(map[TransferDetailsFragment.REFERENCE_ID]!!)
-            .client(createClient(map[ClientDetailsFragment.DISPLAY_NAME],
-                map[ClientDetailsFragment.LOGO_URL], map[ClientDetailsFragment.RETURN_URL],
-                map[ClientDetailsFragment.FAIL_URL]))
-            .showInBrowser(true)
-            .dismissalDialog(
-                DismissalDialog("Do you want to close the application?",
-                "Yes", "No")
-            )
-            .expiryDate(Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_MONTH, get(Calendar.DAY_OF_MONTH) + 3)
-            })
+
+        val request = StatementTapRequest.Builder()
+            .country(getCountry(map[SourceAccountFragment.COUNTRY]!!))
+            .externalId(map[ClientDetailsFragment.EXTERNAL_ID]!!)
+            .successURL(map[ClientDetailsFragment.RETURN_URL]!!)
+            .failURL(map[ClientDetailsFragment.FAIL_URL]!!)
+            .organizationName(map[ClientDetailsFragment.DISPLAY_NAME]!!)
+            .bankCodes(listOf(BankCode.BDO_PERSONAL))
 
         isCheckoutClicked = true
 
-        DirectTapSDK.checkout(this, request.build(), object: TapListener<String?> {
+        StatementTapSDK.checkout(this, request.build(), object: TapListener<String?> {
             override fun onResult(data: String?, error: CoreError?) {
                 error?.let {
                     showProgress(false)
@@ -264,48 +226,15 @@ class MainActivity : FragmentActivity() {
                 rootLayout.visibility = View.GONE
                 resetFields()
             }
-            
+
         }, requestCode)
-    }
-
-    private fun createClient(displayName: String?, logoUrl: String?, returnUrl: String?,
-                             failUrl: String?): Client {
-        return Client(displayName, logoUrl, returnUrl, failUrl)
-    }
-
-    private fun createCustomer(firstName: String, lastName: String, email: String,
-                               mobileNumber: String): Customer {
-        return Customer(firstName, lastName, email, mobileNumber)
-    }
-
-    private fun createAccount(): Account {
-        val bankCode = getBankCode(map[SourceAccountFragment.BANK_CODE]!!)
-        val country = getCountry(map[SourceAccountFragment.COUNTRY]!!)
-
-        return bankCode?.let {
-            Account(it, country)
-        } ?: run {
-            Account(country = country)
-        }
-    }
-
-    private fun createAmount(country: String, amount: String): Amount {
-        return Amount(getCurrency(country), (amount.toDouble() * 100).toInt().toString())
-    }
-
-    private fun getCurrency(country: String): Currency {
-        return when(country) {
-            "Philippines" -> Currency.PHP
-            "Indonesia" -> Currency.IDR
-            else -> Currency.UNKNOWN_CURRENCY
-        }
     }
 
     private fun getCountry(country: String): Country {
         return when(country) {
             "Philippines" -> Country.PH
             "Indonesia" -> Country.ID
-            else -> Country.UNKNOWN
+            else -> Country.TH
         }
     }
 
@@ -385,16 +314,17 @@ class MainActivity : FragmentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if(this@MainActivity.requestCode == requestCode) {
             if(resultCode == RESULT_OK) {
-                val transactionId = data?.getStringExtra(DirectTapSDK.TRANSACTION_ID)
+                val transactionId = data?.getStringExtra(StatementTapSDK.STATEMENT_ID)
                 showMessage("Transaction Successful! Here is the transaction id: $transactionId")
                 // Call this to clear the saved credentials within Tap Web Application
                 // Call this when you detect that there is a different user
-                // TapSDK.clearRememberMe(this@MainActivity)
+                // Call this before calling checkout
+                // StatementTapSDK.clearRememberMe(this@MainActivity)
             }
 
             else {
-                data?.getStringExtra(DirectTapSDK.ERROR)?.let {
-                    showMessage("$it - ${data.getStringExtra(DirectTapSDK.ERROR_CODE)}")
+                data?.getStringExtra(StatementTapSDK.ERROR)?.let {
+                    showMessage(it)
                 }
             }
         }
