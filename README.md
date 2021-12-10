@@ -19,4 +19,4 @@ Just checkout the source code and import using Android Studio. All of the necess
 
 ## Notes
 1. Do not forget to update the API Keys under **Constants** Class (These are provided by Brankas)
-2. Update the Github Credentials under the **build.gradle** project file to enable the access and download of the SDK. Any username or password will be suffice.
+2. Update the Github Credentials under the **build.gradle** project file to enable the access and download of the SDK. Any username or password will be suffice. If the Github account to be used has Two Factor Authentication, use **personal access token** instead of the account password. Ensure that the **personal access token** has no expiration for the download of the SDK to proceed.
