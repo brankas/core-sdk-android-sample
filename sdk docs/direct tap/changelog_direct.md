@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2.7.0 - 2022-01-25
+
+### Added
+
+-  private **terminate()** function which is explicitly called when Internal WebView is destroyed
+
+## 2.6.1 - 2022-01-17
+
+### Fixed
+
+- automatic closing of Internal WebView when success or fail URL's do not start with *https*
+
+## 2.6.0 - 2022-01-12
+
+### Added
+
+- function for retrieving the current SDK Version
+- function for retrieving the Mobile Application Signature (either in SHA1, SHA256 or MD5 format)
+- support for transactional retries within the WebView
+
+## 2.5.0 - 2022-01-06
+
+### Fixed
+
+- End of transaction (success or failure) detection within the WebView for the new URL Format
+
 ## 2.4.0 - 2021-10-25
 
 ### Changed
