@@ -36,16 +36,19 @@ import java.util.HashMap;
 import java.util.Map;
 
 import as.brank.sdk.core.CoreError;
-import as.brank.sdk.tap.TapListener;
+import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.direct.DirectTapSDK;
 import tap.common.BankCode;
 import tap.common.Country;
 import tap.common.DismissalDialog;
+import tap.common.Reference;
 import tap.common.direct.Account;
 import tap.common.direct.Amount;
 import tap.common.direct.Client;
 import tap.common.direct.Currency;
 import tap.common.direct.Customer;
+import tap.common.direct.Status;
+import tap.common.direct.Transaction;
 import tap.direct.DirectTapRequest;
 
 /**
@@ -271,7 +274,6 @@ public class MainActivity extends FragmentActivity {
             .client(createClient(map.get(ClientDetailsFragment.DISPLAY_NAME),
                 map.get(ClientDetailsFragment.LOGO_URL), map.get(ClientDetailsFragment.RETURN_URL),
                 map.get(ClientDetailsFragment.FAIL_URL)))
-            .showInBrowser(true)
             .dismissalDialog(
                 new DismissalDialog("Do you want to close the application?", "Yes", "No")
             )
@@ -279,30 +281,13 @@ public class MainActivity extends FragmentActivity {
 
         isCheckoutClicked = true;
 
-        DirectTapSDK.INSTANCE.checkout(this, request.build(), new TapListener<String>() {
-            @Override
-            public void onTapStarted() {
-                showProgress(false);
-                findViewById(R.id.rootLayout).bringToFront();
-                findViewById(R.id.confirmButton).setVisibility(View.GONE);
-                findViewById(R.id.rootLayout).setVisibility(View.VISIBLE);
-            }
-
-            @Override
-            public void onTapEnded() {
-                findViewById(R.id.confirmButton).setVisibility(View.VISIBLE);
-                findViewById(R.id.rootLayout).setVisibility(View.GONE);
-                resetFields();
-            }
-
+        DirectTapSDK.INSTANCE.checkout(this, request.build(), new CoreListener<String>() {
             @Override
             public void onResult(@Nullable String str, @Nullable CoreError coreError) {
                 if(coreError != null) {
                     showProgress(false);
                     showMessage(coreError.getErrorMessage());
                 }
-                else
-                    showMessage("Transaction Successful! Here is the transaction id: "+str);
             }
         }, REQUEST_CODE, true);
     }
@@ -440,11 +425,15 @@ public class MainActivity extends FragmentActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == REQUEST_CODE) {
             if(resultCode == RESULT_OK) {
-                String transactionId = data.getStringExtra(DirectTapSDK.TRANSACTION_ID);
-                showMessage("Transaction Successful! Here is the transaction id: "+transactionId);
-                // Call this to clear the saved credentials within Tap Web Application
-                // Call this when you detect that there is a different user
-                // TapSDK.clearRememberMe(this@MainActivity)
+                Transaction transaction = ((Reference<Transaction>)
+                        data.getParcelableExtra(DirectTapSDK.TRANSACTION)).getGet();
+                // The status of the transaction should be SUCCESS in order to determine
+                // it is successful. If not, it has been cancelled or failed
+                if(transaction.getStatus() == Status.SUCCESS)
+                    showMessage("Transaction Successful! Here is the transaction id: "+transaction.getId());
+                else
+                    showMessage("Transaction has been cancelled or has failed!");
+
             }
 
             else {

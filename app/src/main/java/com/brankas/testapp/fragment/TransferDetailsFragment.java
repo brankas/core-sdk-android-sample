@@ -11,6 +11,7 @@ import com.google.protobuf.Any;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 public class TransferDetailsFragment extends BaseFragment {
 
@@ -45,7 +46,7 @@ public class TransferDetailsFragment extends BaseFragment {
                 TestApplication.getInstance().getDestinationAccountId());
         ((BoxedEditText) parentView.findViewById(R.id.memo)).setText("Bank Transfer");
         ((BoxedEditText) parentView.findViewById(R.id.amount)).setText("100");
-        ((BoxedEditText) parentView.findViewById(R.id.referenceId)).setText("Sample Reference 1975");
+        ((BoxedEditText) parentView.findViewById(R.id.referenceId)).setText(UUID.randomUUID().toString());
     }
 
     @Override
