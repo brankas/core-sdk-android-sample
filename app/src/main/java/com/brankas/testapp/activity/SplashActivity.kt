@@ -13,7 +13,7 @@ import com.brankas.testapp.R
  */
 
 class SplashActivity : AppCompatActivity() {
-    val delay = 2000L
+    private val delay = 2000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

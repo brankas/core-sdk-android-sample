@@ -9,8 +9,9 @@ import android.util.AttributeSet
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RelativeLayout
+import androidx.appcompat.widget.AppCompatTextView
 import com.brankas.testapp.R
-import kotlinx.android.synthetic.main.layout_boxed_edittext.view.*
 
 /**
  * Author: Ejay Torres
@@ -23,6 +24,10 @@ import kotlinx.android.synthetic.main.layout_boxed_edittext.view.*
  */
 class BoxedEditText: LinearLayout {
     private var textWatcher: TextWatcher? = null
+    private lateinit var editText: EditText
+    private lateinit var errorText: AppCompatTextView
+    private lateinit var prefix: AppCompatTextView
+    private lateinit var border: RelativeLayout
 
     constructor(context: Context?) : super(context) {
         initViews()
@@ -39,6 +44,11 @@ class BoxedEditText: LinearLayout {
 
     private fun initViews(attrs: AttributeSet? = null) {
         inflate(context, R.layout.layout_boxed_edittext, this)
+
+        editText = findViewById(R.id.editText)
+        errorText = findViewById(R.id.errorText)
+        prefix = findViewById(R.id.prefix)
+        border = findViewById(R.id.border)
 
         /**
          * Obtains the custom attributes from XML

@@ -1,7 +1,7 @@
 package com.brankas.testapp.activity
 
 import `as`.brank.sdk.core.CoreError
-import `as`.brank.sdk.tap.TapListener
+import `as`.brank.sdk.core.CoreListener
 import `as`.brank.sdk.tap.direct.DirectTapSDK
 import android.content.Intent
 import android.graphics.Color
@@ -12,11 +12,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.RotateAnimation
+import android.widget.RelativeLayout
+import android.widget.Switch
 import android.widget.TextView
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager.widget.ViewPager
-import com.badoualy.stepperindicator.BuildConfig
+import com.badoualy.stepperindicator.StepperIndicator
 import com.brankas.testapp.*
 import com.brankas.testapp.`interface`.ScreenListener
 import com.brankas.testapp.adapter.CustomPagerAdapter
@@ -25,16 +31,11 @@ import com.brankas.testapp.fragment.ClientDetailsFragment
 import com.brankas.testapp.fragment.SourceAccountFragment
 import com.brankas.testapp.fragment.TransferDetailsFragment
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.android.synthetic.main.activity_main.*
 import tap.common.*
-import tap.common.direct.Account
-import tap.common.direct.Amount
-import tap.common.direct.Client
+import tap.common.direct.*
 import tap.common.direct.Currency
-import tap.common.direct.Customer
 import tap.direct.DirectTapRequest
 import java.util.*
-import kotlin.collections.HashMap
 
 /**
  * Author: Ejay Torres
@@ -67,6 +68,9 @@ class MainActivity : FragmentActivity() {
 
     private val requestCode = 2005
 
+    private lateinit var viewPager: ViewPager
+    private lateinit var confirmButton: AppCompatButton
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -79,6 +83,8 @@ class MainActivity : FragmentActivity() {
             }, 3000)
         }
         else {
+            viewPager = findViewById(R.id.viewPager)
+            confirmButton = findViewById(R.id.confirmButton)
             initViewPager()
             addConfirmButtonListener()
             addBackButtonListener()
@@ -124,8 +130,8 @@ class MainActivity : FragmentActivity() {
                                         positionOffsetPixels: Int) {}
 
             override fun onPageSelected(position: Int) {
-                back.visibility = if(position > 0) View.VISIBLE else View.GONE
-                fillText.text = when (position) {
+                findViewById<AppCompatImageView>(R.id.back).visibility = if(position > 0) View.VISIBLE else View.GONE
+                findViewById<AppCompatTextView>(R.id.fillText).text = when (position) {
                     sourceAccountInfo -> getString(R.string.enter_source_account_information)
                     transferDetailsInfo -> getString(R.string.enter_transfer_details)
                     clientDetailsInfo -> getString(R.string.enter_pidp_details)
@@ -143,7 +149,7 @@ class MainActivity : FragmentActivity() {
             override fun onPageScrollStateChanged(state: Int) {}
         })
 
-        stepper.setViewPager(viewPager)
+        findViewById<StepperIndicator>(R.id.stepper).setViewPager(viewPager)
     }
 
     private fun addConfirmButtonListener() {
@@ -197,7 +203,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun addBackButtonListener() {
-        back.setOnClickListener {
+        findViewById<AppCompatImageView>(R.id.back).setOnClickListener {
             showPage(viewPager.currentItem - 1)
         }
     }
@@ -231,7 +237,6 @@ class MainActivity : FragmentActivity() {
             .client(createClient(map[ClientDetailsFragment.DISPLAY_NAME],
                 map[ClientDetailsFragment.LOGO_URL], map[ClientDetailsFragment.RETURN_URL],
                 map[ClientDetailsFragment.FAIL_URL]))
-            .showInBrowser(true)
             .dismissalDialog(
                 DismissalDialog("Do you want to close the application?",
                 "Yes", "No")
@@ -242,29 +247,13 @@ class MainActivity : FragmentActivity() {
 
         isCheckoutClicked = true
 
-        DirectTapSDK.checkout(this, request.build(), object: TapListener<String?> {
+        DirectTapSDK.checkout(this, request.build(), object: CoreListener<String?> {
             override fun onResult(data: String?, error: CoreError?) {
                 error?.let {
                     showProgress(false)
-                    showMessage(error?.errorMessage)
-                } ?: run {
-                    showMessage("Transaction Successful! Here is the transaction id: $data")
+                    showMessage(it.errorMessage)
                 }
             }
-
-            override fun onTapStarted() {
-                showProgress(false)
-                rootLayout.bringToFront()
-                confirmButton.visibility = View.GONE
-                rootLayout.visibility = View.VISIBLE
-            }
-
-            override fun onTapEnded() {
-                confirmButton.visibility = View.VISIBLE
-                rootLayout.visibility = View.GONE
-                resetFields()
-            }
-            
         }, requestCode)
     }
 
@@ -326,7 +315,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun addAutoFillListener() {
-        imgLogo.setOnClickListener {
+        findViewById<AppCompatImageView>(R.id.imgLogo).setOnClickListener {
             getViewPagerFragment().autoFill()
         }
     }
@@ -340,6 +329,9 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun showProgress(isShown: Boolean) {
+        val progress = findViewById<AppCompatImageView>(R.id.progress)
+        val progressLayout = findViewById<RelativeLayout>(R.id.progressLayout)
+
         if (isShown) {
             progressLayout.visibility = View.VISIBLE
             rotateAnimation.duration = 900
@@ -385,11 +377,15 @@ class MainActivity : FragmentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if(this@MainActivity.requestCode == requestCode) {
             if(resultCode == RESULT_OK) {
-                val transactionId = data?.getStringExtra(DirectTapSDK.TRANSACTION_ID)
-                showMessage("Transaction Successful! Here is the transaction id: $transactionId")
-                // Call this to clear the saved credentials within Tap Web Application
-                // Call this when you detect that there is a different user
-                // TapSDK.clearRememberMe(this@MainActivity)
+                val transaction = data?.getParcelableExtra<Reference<Transaction>>(
+                    DirectTapSDK.TRANSACTION)!!.get!!
+
+                // The status of the transaction should be SUCCESS in order to determine
+                // it is successful. If not, it has been cancelled or failed
+                if(transaction.status == Status.SUCCESS)
+                    showMessage("Transaction Successful! Here is the transaction id: ${transaction.id}")
+                else
+                    showMessage("Transaction has been cancelled or has failed!")
             }
 
             else {
@@ -401,7 +397,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun addSwitchListener() {
-        switchEnv.setOnCheckedChangeListener { _, isChecked ->
+        findViewById<SwitchCompat>(R.id.switchEnv).setOnCheckedChangeListener { _, isChecked ->
             TestAppApplication.instance.updateTap(!isChecked)
         }
     }

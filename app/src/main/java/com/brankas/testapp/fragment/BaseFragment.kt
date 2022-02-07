@@ -10,12 +10,6 @@ import androidx.appcompat.widget.AppCompatSpinner
 import androidx.fragment.app.Fragment
 import com.brankas.testapp.`interface`.ScreenListener
 import com.brankas.testapp.customview.BoxedEditText
-import kotlinx.android.synthetic.main.fragment_source_account.*
-
-/**
- * TODO
- *
- */
 
 abstract class BaseFragment : Fragment() {
 
@@ -32,6 +26,8 @@ abstract class BaseFragment : Fragment() {
     protected var fieldCount = 0
     protected val map = hashMapOf<String, String>()
 
+    protected lateinit var parentLayout: View
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         retainInstance = true
@@ -46,7 +42,8 @@ abstract class BaseFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         screenListener = arguments?.getParcelable<ScreenListener>(LISTENER) as ScreenListener
-        return inflater.inflate(getLayoutId(), container, false)
+        parentLayout =  inflater.inflate(getLayoutId(), container, false)
+        return parentLayout
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

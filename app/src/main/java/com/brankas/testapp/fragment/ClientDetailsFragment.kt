@@ -2,16 +2,23 @@ package com.brankas.testapp.fragment
 
 import com.brankas.testapp.R
 import com.brankas.testapp.`interface`.ScreenListener
-import kotlinx.android.synthetic.main.fragment_client_details.*
-import kotlinx.android.synthetic.main.fragment_source_account.*
+import com.brankas.testapp.customview.BoxedEditText
 
 class ClientDetailsFragment: BaseFragment() {
+    private lateinit var logoUrl: BoxedEditText
+    private lateinit var returnUrl: BoxedEditText
+    private lateinit var failUrl: BoxedEditText
+    private lateinit var displayName: BoxedEditText
+
     override fun getLayoutId(): Int {
         return R.layout.fragment_client_details
     }
 
     override fun initDetails() {
-
+        logoUrl = parentLayout.findViewById(R.id.logoUrl)
+        returnUrl = parentLayout.findViewById(R.id.returnUrl)
+        failUrl = parentLayout.findViewById(R.id.failUrl)
+        displayName = parentLayout.findViewById(R.id.displayName)
     }
 
     override fun showError(tag: String?) {

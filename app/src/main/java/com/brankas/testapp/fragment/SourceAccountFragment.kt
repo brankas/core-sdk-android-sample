@@ -1,25 +1,36 @@
 package com.brankas.testapp.fragment
-import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Spinner
 import com.brankas.testapp.R
 import com.brankas.testapp.`interface`.ScreenListener
 import com.brankas.testapp.adapter.BankAdapter
 import com.brankas.testapp.customview.BoxedEditText
-import kotlinx.android.synthetic.main.fragment_source_account.*
-import kotlinx.android.synthetic.main.spinner_item.view.*
 
 
 class SourceAccountFragment: BaseFragment() {
     private var currentSelectedCountry = 0
     private var currentSelectedBank = 0
 
+    private lateinit var firstName: BoxedEditText
+    private lateinit var lastName: BoxedEditText
+    private lateinit var email: BoxedEditText
+    private lateinit var mobileNumber: BoxedEditText
+    private lateinit var countrySpinner: Spinner
+    private lateinit var bankSpinner: Spinner
+
     override fun getLayoutId(): Int {
         return R.layout.fragment_source_account
     }
 
     override fun initDetails() {
+        firstName = parentLayout.findViewById(R.id.firstName)
+        lastName = parentLayout.findViewById(R.id.lastName)
+        email = parentLayout.findViewById(R.id.email)
+        mobileNumber = parentLayout.findViewById(R.id.mobileNumber)
+        countrySpinner = parentLayout.findViewById(R.id.countrySpinner)
+        bankSpinner = parentLayout.findViewById(R.id.bankSpinner)
         initCountrySpinner()
     }
 

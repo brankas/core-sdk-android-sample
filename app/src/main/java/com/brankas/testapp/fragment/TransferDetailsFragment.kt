@@ -1,18 +1,26 @@
 package com.brankas.testapp.fragment
 
-import com.brankas.testapp.Constants
 import com.brankas.testapp.R
 import com.brankas.testapp.TestAppApplication
 import com.brankas.testapp.`interface`.ScreenListener
-import kotlinx.android.synthetic.main.fragment_transfer_details.*
+import com.brankas.testapp.customview.BoxedEditText
+import java.util.*
 
 class TransferDetailsFragment: BaseFragment() {
+    private lateinit var destinationAccountId: BoxedEditText
+    private lateinit var memo: BoxedEditText
+    private lateinit var amount: BoxedEditText
+    private lateinit var referenceId: BoxedEditText
 
     override fun getLayoutId(): Int {
         return R.layout.fragment_transfer_details
     }
 
     override fun initDetails() {
+        destinationAccountId = parentLayout.findViewById(R.id.destinationAccountId)
+        memo = parentLayout.findViewById(R.id.memo)
+        amount = parentLayout.findViewById(R.id.amount)
+        referenceId = parentLayout.findViewById(R.id.referenceId)
         initDestinationAccountIdMaxLength()
     }
 
@@ -28,7 +36,7 @@ class TransferDetailsFragment: BaseFragment() {
         destinationAccountId.setText(TestAppApplication.instance.getDestinationAccountId())
         memo.setText("Bank Transfer")
         amount.setText("100")
-        referenceId.setText("Sample Reference 1975")
+        referenceId.setText(UUID.randomUUID().toString())
     }
 
     override fun getFieldsMap(): HashMap<String, Any> {
