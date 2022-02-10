@@ -1,7 +1,7 @@
 package com.brankas.testapp.activity
 
 import `as`.brank.sdk.core.CoreError
-import `as`.brank.sdk.tap.TapListener
+import `as`.brank.sdk.core.CoreListener
 import `as`.brank.sdk.tap.statement.StatementTapSDK
 import android.content.Intent
 import android.graphics.Color
@@ -204,7 +204,7 @@ class MainActivity : FragmentActivity() {
 
         isCheckoutClicked = true
 
-        StatementTapSDK.checkout(this, request.build(), object: TapListener<String?> {
+        StatementTapSDK.checkout(this, request.build(), object: CoreListener<String?> {
             override fun onResult(data: String?, error: CoreError?) {
                 error?.let {
                     showProgress(false)
@@ -212,21 +212,8 @@ class MainActivity : FragmentActivity() {
                 } ?: run {
                     showMessage("Transaction Successful! Here is the transaction id: $data")
                 }
-            }
-
-            override fun onTapStarted() {
-                showProgress(false)
-                rootLayout.bringToFront()
-                confirmButton.visibility = View.GONE
-                rootLayout.visibility = View.VISIBLE
-            }
-
-            override fun onTapEnded() {
-                confirmButton.visibility = View.VISIBLE
-                rootLayout.visibility = View.GONE
                 resetFields()
             }
-
         }, requestCode)
     }
 
