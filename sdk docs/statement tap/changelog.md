@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.4.0 - 2022-02-10
+
+### Fixed
+
+- crash when pressing the Home Button or PowerLock Button while Tap Web App is seen in the Host App (only applicable when Fragment Implementation is used)
+
+### Changed
+
+- renamed overloaded checkout() function for Fragment Implementation to **checkoutViaFragment** to avoid confusion with the Activity Implementation
+- **useRememberMe** default value to **false** in both **checkout()** and **checkoutViaFragment()** options
+- removed the interface **TapListener** and replaced with the existing **CoreListener** for returning transaction
+
+## 1.3.2 - 2022-01-28
+
+### Fixed
+
+- closing of fragment when success, failed or cancelled URL's are detected
+- showing of dismissal dialog when back button is pressed for fragment implementation
+
+### Changed
+
+- arrow color for fragment implementation as optional
+
+## 1.3.1 - 2022-01-17
+
+### Fixed
+
+- automatic closing of Internal WebView when success or fail URL's do not start with *https*
+
+## 1.3.0 - 2022-01-12
+
+### Added
+
+- function for retrieving the current SDK Version
+- function for retrieving the Mobile Application Signature (either in SHA1, SHA256 or MD5 format)
+- support for transactional retries within the WebView
+
+## 1.2.0 - 2022-01-06
+
+### Fixed
+
+- End of transaction (success or failure) detection within the WebView for the new URL Format
+
 ## 1.1.0 - 2021-10-25
 
 ### Changed

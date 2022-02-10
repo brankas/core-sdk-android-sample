@@ -34,7 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import as.brank.sdk.core.CoreError;
-import as.brank.sdk.tap.TapListener;
+import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.statement.StatementTapSDK;
 import tap.common.BankCode;
 import tap.common.Country;
@@ -235,22 +235,7 @@ public class MainActivity extends FragmentActivity {
 
         isCheckoutClicked = true;
 
-        StatementTapSDK.INSTANCE.checkout(this, request.build(), new TapListener<String>() {
-            @Override
-            public void onTapStarted() {
-                showProgress(false);
-                findViewById(R.id.rootLayout).bringToFront();
-                findViewById(R.id.confirmButton).setVisibility(View.GONE);
-                findViewById(R.id.rootLayout).setVisibility(View.VISIBLE);
-            }
-
-            @Override
-            public void onTapEnded() {
-                findViewById(R.id.confirmButton).setVisibility(View.VISIBLE);
-                findViewById(R.id.rootLayout).setVisibility(View.GONE);
-                resetFields();
-            }
-
+        StatementTapSDK.INSTANCE.checkout(this, request.build(), new CoreListener<String>() {
             @Override
             public void onResult(@Nullable String str, @Nullable CoreError coreError) {
                 if(coreError != null) {
@@ -259,6 +244,7 @@ public class MainActivity extends FragmentActivity {
                 }
                 else
                     showMessage("Transaction Successful! Here is the transaction id: "+str);
+                resetFields();
             }
         }, REQUEST_CODE, false, true);
     }
