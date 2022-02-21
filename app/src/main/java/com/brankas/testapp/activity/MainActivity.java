@@ -31,6 +31,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import as.brank.sdk.core.CoreError;
@@ -38,6 +39,10 @@ import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.statement.StatementTapSDK;
 import tap.common.BankCode;
 import tap.common.Country;
+import tap.common.Reference;
+import tap.common.statement.Statement;
+import tap.common.statement.Transaction;
+import tap.statement.StatementRetrievalRequest;
 import tap.statement.StatementTapRequest;
 
 /**
@@ -225,28 +230,33 @@ public class MainActivity extends FragmentActivity {
     private void checkout() {
         showProgress(true);
 
-        StatementTapRequest.Builder request = new StatementTapRequest.Builder()
-            .country(getCountry(map.get(SourceAccountFragment.COUNTRY)))
-            .externalId(map.get(ClientDetailsFragment.EXTERNAL_ID))
-            .successURL(map.get(ClientDetailsFragment.RETURN_URL))
-            .failURL(map.get(ClientDetailsFragment.FAIL_URL))
-            .organizationName(map.get(ClientDetailsFragment.DISPLAY_NAME))
-            .bankCodes(Arrays.asList(BankCode.BDO_PERSONAL));
-
         isCheckoutClicked = true;
 
-        StatementTapSDK.INSTANCE.checkout(this, request.build(), new CoreListener<String>() {
-            @Override
-            public void onResult(@Nullable String str, @Nullable CoreError coreError) {
-                if(coreError != null) {
+        StatementTapSDK.INSTANCE.getEnabledBanks(getCountry(map.get(SourceAccountFragment.COUNTRY)),
+                (CoreListener<List<BankCode>>) (bankCodes, coreError) -> {
+
+            StatementTapRequest.Builder request = new StatementTapRequest.Builder()
+                    .country(getCountry(map.get(SourceAccountFragment.COUNTRY)))
+                    .externalId(map.get(ClientDetailsFragment.EXTERNAL_ID))
+                    .successURL(map.get(ClientDetailsFragment.RETURN_URL))
+                    .failURL(map.get(ClientDetailsFragment.FAIL_URL))
+                    .organizationName(map.get(ClientDetailsFragment.DISPLAY_NAME))
+                    .bankCodes(bankCodes)
+                    // Comment this part if you do not want to do a Statement Retrieval
+                    // Default start date is the day before the current day and end date is the current day
+                    .statementRetrievalRequest(new StatementRetrievalRequest.Builder().build());
+
+            StatementTapSDK.INSTANCE.checkout(MainActivity.this, request.build(),
+                    (CoreListener<String>) (str, coreError1) -> {
+                if(coreError1 != null) {
                     showProgress(false);
-                    showMessage(coreError.getErrorMessage());
+                    showMessage(coreError1.getErrorMessage());
                 }
                 else
                     showMessage("Transaction Successful! Here is the transaction id: "+str);
                 resetFields();
-            }
-        }, REQUEST_CODE, false, true);
+            }, REQUEST_CODE, false, true);
+        });
     }
 
     private Country getCountry(String country) {
@@ -258,32 +268,6 @@ public class MainActivity extends FragmentActivity {
             default:
                 return Country.TH;
         }
-    }
-
-    private BankCode getBankCode(String bankCode) {
-        switch (bankCode) {
-            case "BDO":
-                return BankCode.BDO_PERSONAL;
-            case "BPI":
-                return BankCode.BPI_PERSONAL;
-            case "MetroBank":
-                return BankCode.METROBANK_PERSONAL;
-            case "PNB":
-                return BankCode.PNB_PERSONAL;
-            case "RCBC":
-                return BankCode.RCBC_PERSONAL;
-            case "Union Bank":
-                return BankCode.UNIONBANK_PERSONAL;
-            case "BCA":
-                return BankCode.BCA_PERSONAL;
-            case "BNI":
-                return BankCode.BNI_PERSONAL;
-            case "BRI":
-                return BankCode.BRI_PERSONAL;
-            case "Mandiri":
-                return BankCode.MANDIRI_PERSONAL;
-        }
-        return BankCode.DUMMY_BANK_PERSONAL;
     }
 
     private void addAutoFillListener() {
@@ -308,7 +292,6 @@ public class MainActivity extends FragmentActivity {
             findViewById(R.id.progress).clearAnimation();
         }
     }
-
 
     private void showMessage(String message) {
         Snackbar snackbar = Snackbar.make(getWindow().getDecorView().findViewById(
@@ -348,11 +331,18 @@ public class MainActivity extends FragmentActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == REQUEST_CODE) {
             if(resultCode == RESULT_OK) {
-                String transactionId = data.getStringExtra(StatementTapSDK.STATEMENT_ID);
-                showMessage("Transaction Successful! Here is the transaction id: "+transactionId);
-                // Call this to clear the saved credentials within Tap Web Application
-                // Call this when you detect that there is a different user
-                // TapSDK.clearRememberMe(this@MainActivity)
+                List<Statement> statements = ((Reference<List<Statement>>)
+                        data.getParcelableExtra(StatementTapSDK.STATEMENTS)).getGet();
+                System.out.println("STATEMENTS: "+statements.size());
+                for(Statement statement: statements) {
+                    System.out.println("ACCOUNT: "+statement.getAccount().getHolderName()
+                            +" "+statement.getAccount().getNumber()+" - "
+                            +statement.getTransactions().size());
+                    for(Transaction transaction: statement.getTransactions()) {
+                        System.out.println("TRANSACTION: "+transaction.getId()+" "
+                                +statement.getAccount().getHolderName());
+                    }
+                }
             }
 
             else {
