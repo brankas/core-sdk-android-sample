@@ -25,6 +25,8 @@ import com.brankas.testapp.fragment.SourceAccountFragment
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import tap.common.*
+import tap.common.statement.Statement
+import tap.statement.StatementRetrievalRequest
 import tap.statement.StatementTapRequest
 import java.util.*
 
@@ -194,27 +196,31 @@ class MainActivity : FragmentActivity() {
     private fun checkout() {
         showProgress(true)
 
-        val request = StatementTapRequest.Builder()
-            .country(getCountry(map[SourceAccountFragment.COUNTRY]!!))
-            .externalId(map[ClientDetailsFragment.EXTERNAL_ID]!!)
-            .successURL(map[ClientDetailsFragment.RETURN_URL]!!)
-            .failURL(map[ClientDetailsFragment.FAIL_URL]!!)
-            .organizationName(map[ClientDetailsFragment.DISPLAY_NAME]!!)
-            .bankCodes(listOf(BankCode.BDO_PERSONAL))
+        StatementTapSDK.getEnabledBanks(getCountry(map[SourceAccountFragment.COUNTRY]!!),
+            object: CoreListener<List<BankCode>> {
+            override fun onResult(data: List<BankCode>?, error: CoreError?) {
+                data?.let {
+                    val request = StatementTapRequest.Builder()
+                        .country(getCountry(map[SourceAccountFragment.COUNTRY]!!))
+                        .externalId(map[ClientDetailsFragment.EXTERNAL_ID]!!)
+                        .successURL(map[ClientDetailsFragment.RETURN_URL]!!)
+                        .failURL(map[ClientDetailsFragment.FAIL_URL]!!)
+                        .organizationName(map[ClientDetailsFragment.DISPLAY_NAME]!!)
+                        .bankCodes(it)
+                        // Comment this part if you do not want to do a Statement Retrieval
+                        // Default start date is the day before the current day and end date is the current day
+                        .statementRetrievalRequest(StatementRetrievalRequest.Builder().build())
 
-        isCheckoutClicked = true
+                    isCheckoutClicked = true
 
-        StatementTapSDK.checkout(this, request.build(), object: CoreListener<String?> {
-            override fun onResult(data: String?, error: CoreError?) {
-                error?.let {
-                    showProgress(false)
-                    showMessage(error?.errorMessage)
-                } ?: run {
-                    showMessage("Transaction Successful! Here is the transaction id: $data")
+                    StatementTapSDK.checkout(this@MainActivity, request.build(), object: CoreListener<String?> {
+                        override fun onResult(data: String?, error: CoreError?) {
+                            resetFields()
+                        }
+                    }, requestCode)
                 }
-                resetFields()
             }
-        }, requestCode)
+        })
     }
 
     private fun getCountry(country: String): Country {
@@ -222,22 +228,6 @@ class MainActivity : FragmentActivity() {
             "Philippines" -> Country.PH
             "Indonesia" -> Country.ID
             else -> Country.TH
-        }
-    }
-
-    private fun getBankCode(bankCode: String): BankCode? {
-        return when(bankCode) {
-            "BDO" -> BankCode.BDO_PERSONAL
-            "BPI" -> BankCode.BPI_PERSONAL
-            "MetroBank" -> BankCode.METROBANK_PERSONAL
-            "PNB" -> BankCode.PNB_PERSONAL
-            "RCBC" -> BankCode.RCBC_PERSONAL
-            "Union Bank" -> BankCode.UNIONBANK_PERSONAL
-            "BCA" -> BankCode.BCA_PERSONAL
-            "BNI" -> BankCode.BNI_PERSONAL
-            "BRI" -> BankCode.BRI_PERSONAL
-            "Mandiri" -> BankCode.MANDIRI_PERSONAL
-            else -> null
         }
     }
 
@@ -301,12 +291,15 @@ class MainActivity : FragmentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if(this@MainActivity.requestCode == requestCode) {
             if(resultCode == RESULT_OK) {
-                val transactionId = data?.getStringExtra(StatementTapSDK.STATEMENT_ID)
-                showMessage("Transaction Successful! Here is the transaction id: $transactionId")
-                // Call this to clear the saved credentials within Tap Web Application
-                // Call this when you detect that there is a different user
-                // Call this before calling checkout
-                // StatementTapSDK.clearRememberMe(this@MainActivity)
+                val statements = data?.getParcelableExtra<Reference<List<Statement>>>(
+                    StatementTapSDK.STATEMENTS)!!.get!!
+                println("STATEMENTS: "+statements.size)
+                statements.forEach {
+                    println("ACCOUNT: ${it.account.holderName} ${it.account.number} - ${it.transactions.size}")
+                    it.transactions.forEach { transaction ->
+                        println("TRANSACTION: ${transaction.id} - ${it.account.holderName}")
+                    }
+                }
             }
 
             else {
