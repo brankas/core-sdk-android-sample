@@ -38,10 +38,10 @@ This set of instructions assumes that the IDE being used is Android Studio
 	```
 **NOTE: You can use any GitHub Account in filling up the credentials**
 
-2. In your app build.gradle file, add this line inside the dependencies configuration: **implementation "com.brankas.tap:direct-tap:3.0.0"** to set the SDK as a dependency for the application. This should look like:
+2. In your app build.gradle file, add this line inside the dependencies configuration: **implementation "com.brankas.tap:direct-tap:3.1.0"** to set the SDK as a dependency for the application. This should look like:
 	````gradle
 	dependencies {
-    	implementation "com.brankas.tap:direct-tap:3.0.0"
+    	implementation "com.brankas.tap:direct-tap:3.1.0"
 	}
 	````
 
@@ -157,7 +157,7 @@ import tap.common.direct.Transaction;
 import tap.common.BankCode;
 import tap.common.Country;
 import tap.common.DismissalDialog;
-import tap.common.direct.Currency;
+import tap.common.Currency;
 
 DirectTapSDK.INSTANCE.checkout(activity, 
 	new DirectTapRequest.Builder()
@@ -185,8 +185,7 @@ DirectTapSDK.INSTANCE.checkout(activity,
         	// Transaction is successful
             		if(resultCode == RESULT_OK) {
             		// Retrieve transaction
-				Transaction transaction = ((Reference<Transaction>)
-                       data.getParcelableExtra(DirectTapSDK.TRANSACTION)).getGet();
+                		Transaction transaction = data.getParcelableExtra<Reference<Transaction>>(DirectTapSDK.TRANSACTION).get();
                     		Systemout.println("TRANSACTION ID: "+transaction.getId());
             		}
         	}
@@ -200,14 +199,14 @@ import `as`.brank.sdk.core.CoreError
 import `as`.brank.sdk.tap.CoreListener
 import `as`.brank.sdk.tap.direct.DirectTapSDK
 import tap.common.direct.*
-import tap.common.direct.Currency
+import tap.common.Currency
 import tap.direct.DirectTapRequest
 import tap.common.Reference
 import tap.common.direct.Transaction
 import tap.common.BankCode
 import tap.common.Country
 import tap.common.DismissalDialog
-import tap.common.direct.Currency
+import tap.common.Currency
 
 DirectTapSDK.checkout(activity, 
 	DirectTapRequest.Builder()

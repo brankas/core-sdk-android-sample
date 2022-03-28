@@ -13,7 +13,6 @@ import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import android.widget.RelativeLayout
-import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageView
@@ -32,8 +31,8 @@ import com.brankas.testapp.fragment.SourceAccountFragment
 import com.brankas.testapp.fragment.TransferDetailsFragment
 import com.google.android.material.snackbar.Snackbar
 import tap.common.*
+import tap.common.Currency
 import tap.common.direct.*
-import tap.common.direct.Currency
 import tap.direct.DirectTapRequest
 import java.util.*
 
