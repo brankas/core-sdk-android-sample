@@ -30,10 +30,10 @@ import com.brankas.testapp.fragment.ClientDetailsFragment
 import com.brankas.testapp.fragment.SourceAccountFragment
 import com.brankas.testapp.fragment.TransferDetailsFragment
 import com.google.android.material.snackbar.Snackbar
-import tap.common.*
-import tap.common.Currency
-import tap.common.direct.*
-import tap.direct.DirectTapRequest
+import tap.model.*
+import tap.model.Currency
+import tap.model.direct.*
+import tap.request.direct.DirectTapRequest
 import java.util.*
 
 /**
