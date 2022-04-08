@@ -37,18 +37,18 @@ import java.util.Map;
 import as.brank.sdk.core.CoreError;
 import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.direct.DirectTapSDK;
-import tap.common.Amount;
-import tap.common.BankCode;
-import tap.common.Country;
-import tap.common.Currency;
-import tap.common.DismissalDialog;
-import tap.common.Reference;
-import tap.common.direct.Account;
-import tap.common.direct.Client;
-import tap.common.direct.Customer;
-import tap.common.direct.Status;
-import tap.common.direct.Transaction;
-import tap.direct.DirectTapRequest;
+import tap.model.Amount;
+import tap.model.BankCode;
+import tap.model.Country;
+import tap.model.Currency;
+import tap.model.DismissalDialog;
+import tap.model.Reference;
+import tap.model.direct.Account;
+import tap.model.direct.Client;
+import tap.model.direct.Customer;
+import tap.model.direct.Status;
+import tap.model.direct.Transaction;
+import tap.request.direct.DirectTapRequest;
 
 /**
  * Author: Ejay Torres
