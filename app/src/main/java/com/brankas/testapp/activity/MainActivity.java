@@ -29,21 +29,20 @@ import com.brankas.testapp.fragment.SourceAccountFragment;
 import com.brankas.testapp.listener.ScreenListener;
 import com.google.android.material.snackbar.Snackbar;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import as.brank.sdk.core.CoreError;
 import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.statement.StatementTapSDK;
-import tap.common.BankCode;
-import tap.common.Country;
-import tap.common.Reference;
-import tap.common.statement.Statement;
-import tap.common.statement.Transaction;
-import tap.statement.StatementRetrievalRequest;
-import tap.statement.StatementTapRequest;
+import tap.model.BankCode;
+import tap.model.Country;
+import tap.model.Reference;
+import tap.model.statement.Bank;
+import tap.model.statement.Statement;
+import tap.model.statement.Transaction;
+import tap.request.statement.StatementRetrievalRequest;
+import tap.request.statement.StatementTapRequest;
 
 /**
  * Author: Ejay Torres
@@ -233,7 +232,7 @@ public class MainActivity extends FragmentActivity {
         isCheckoutClicked = true;
 
         StatementTapSDK.INSTANCE.getEnabledBanks(getCountry(map.get(SourceAccountFragment.COUNTRY)),
-                (CoreListener<List<BankCode>>) (bankCodes, coreError) -> {
+                (CoreListener<List<Bank>>) (banks, coreError) -> {
 
             StatementTapRequest.Builder request = new StatementTapRequest.Builder()
                     .country(getCountry(map.get(SourceAccountFragment.COUNTRY)))
@@ -241,7 +240,6 @@ public class MainActivity extends FragmentActivity {
                     .successURL(map.get(ClientDetailsFragment.RETURN_URL))
                     .failURL(map.get(ClientDetailsFragment.FAIL_URL))
                     .organizationName(map.get(ClientDetailsFragment.DISPLAY_NAME))
-                    .bankCodes(bankCodes)
                     // Comment this part if you do not want to do a Statement Retrieval
                     // Default start date is the day before the current day and end date is the current day
                     .statementRetrievalRequest(new StatementRetrievalRequest.Builder().build());
@@ -255,7 +253,7 @@ public class MainActivity extends FragmentActivity {
                 else
                     showMessage("Transaction Successful! Here is the transaction id: "+str);
                 resetFields();
-            }, REQUEST_CODE, false, true);
+            }, REQUEST_CODE, false, false, null);
         });
     }
 
