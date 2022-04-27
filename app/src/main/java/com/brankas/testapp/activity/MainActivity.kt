@@ -24,10 +24,13 @@ import com.brankas.testapp.fragment.ClientDetailsFragment
 import com.brankas.testapp.fragment.SourceAccountFragment
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
-import tap.common.*
-import tap.common.statement.Statement
-import tap.statement.StatementRetrievalRequest
-import tap.statement.StatementTapRequest
+import tap.model.BankCode
+import tap.model.Country
+import tap.model.Reference
+import tap.model.statement.Bank
+import tap.model.statement.Statement
+import tap.request.statement.StatementRetrievalRequest
+import tap.request.statement.StatementTapRequest
 import java.util.*
 
 /**
@@ -197,8 +200,8 @@ class MainActivity : FragmentActivity() {
         showProgress(true)
 
         StatementTapSDK.getEnabledBanks(getCountry(map[SourceAccountFragment.COUNTRY]!!),
-            object: CoreListener<List<BankCode>> {
-            override fun onResult(data: List<BankCode>?, error: CoreError?) {
+            object: CoreListener<List<Bank>> {
+            override fun onResult(data: List<Bank>?, error: CoreError?) {
                 data?.let {
                     val request = StatementTapRequest.Builder()
                         .country(getCountry(map[SourceAccountFragment.COUNTRY]!!))
@@ -206,7 +209,7 @@ class MainActivity : FragmentActivity() {
                         .successURL(map[ClientDetailsFragment.RETURN_URL]!!)
                         .failURL(map[ClientDetailsFragment.FAIL_URL]!!)
                         .organizationName(map[ClientDetailsFragment.DISPLAY_NAME]!!)
-                        .bankCodes(it)
+                        .bankCodes(it.map { bank -> bank.bankCode })
                         // Comment this part if you do not want to do a Statement Retrieval
                         // Default start date is the day before the current day and end date is the current day
                         .statementRetrievalRequest(StatementRetrievalRequest.Builder().build())
