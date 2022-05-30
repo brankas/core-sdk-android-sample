@@ -4,28 +4,33 @@ import `as`.brank.sdk.core.CoreError
 import `as`.brank.sdk.core.CoreListener
 import `as`.brank.sdk.tap.statement.StatementTapSDK
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.util.Patterns
+import android.os.Looper
 import android.view.View
-import android.view.ViewGroup
-import android.view.animation.Animation
-import android.view.animation.RotateAnimation
-import android.widget.TextView
-import androidx.core.content.ContextCompat
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatSpinner
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.appcompat.widget.SwitchCompat
+import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.FragmentActivity
-import androidx.viewpager.widget.ViewPager
-import com.brankas.testapp.*
-import com.brankas.testapp.`interface`.ScreenListener
-import com.brankas.testapp.adapter.CustomPagerAdapter
-import com.brankas.testapp.fragment.BaseFragment
-import com.brankas.testapp.fragment.ClientDetailsFragment
-import com.brankas.testapp.fragment.SourceAccountFragment
-import com.google.android.material.snackbar.Snackbar
-import kotlinx.android.synthetic.main.activity_main.*
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.brankas.testapp.Constants
+import com.brankas.testapp.R
+import com.brankas.testapp.adapter.StatementBanksAdapter
+import com.brankas.testapp.adapter.StatementTransactionsAdapter
+import com.brankas.testapp.extension.getDateString
+import com.brankas.testapp.model.StatementBankItemViewModel
+import com.brankas.testapp.model.TransactionItemViewModel
+import com.google.android.material.textfield.TextInputEditText
+import com.jakewharton.rxbinding4.widget.textChanges
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.kotlin.Observables
 import tap.model.BankCode
 import tap.model.Country
+import tap.model.DismissalDialog
 import tap.model.Reference
 import tap.model.statement.Bank
 import tap.model.statement.Statement
@@ -39,283 +44,316 @@ import java.util.*
  */
 
 class MainActivity : FragmentActivity() {
-    /**
-     * Pertains to the field map to be used for checkout
-     */
-    private val map = hashMapOf<String, String>()
 
-    /**
-     * Pertains to the rotation animation for the progress image
-     */
-    private val rotateAnimation = RotateAnimation(
-        0f, 360f,
-        Animation.RELATIVE_TO_SELF, 0.5f,
-        Animation.RELATIVE_TO_SELF, 0.5f
-    )
+    private lateinit var scrollView: NestedScrollView
+    private lateinit var useRememberMe: SwitchCompat
+    private lateinit var actionBarText: TextInputEditText
+    private lateinit var showActionBar: SwitchCompat
+    private lateinit var enableAutoConsent: SwitchCompat
+    private lateinit var retrieveStatements: SwitchCompat
+    private lateinit var apiKey: TextInputEditText
+    private lateinit var orgName: TextInputEditText
+    private lateinit var externalId: TextInputEditText
+    private lateinit var successURL: TextInputEditText
+    private lateinit var failURL: TextInputEditText
+    private lateinit var countrySpinner: AppCompatSpinner
+    private lateinit var checkBoxLayout: LinearLayout
+    private lateinit var lstBanks: RecyclerView
+    private lateinit var lstCorpBanks: RecyclerView
+    private lateinit var statementRetrievalLayout: LinearLayout
+    private lateinit var datePickerStart: DatePicker
+    private lateinit var datePickerEnd: DatePicker
+    private lateinit var checkout: AppCompatButton
 
-    /**
-     * Constants pertaining to pages or screens of the [viewPager]
-     */
-    private val sourceAccountInfo = 0
-    private val clientDetailsInfo = 1
+    private var country = Country.UNKNOWN
 
-    private var isCheckoutClicked = false
+    private val bankItems = ArrayList<StatementBankItemViewModel>()
+    private var scrollToBottom = false
+    private val statementRetrievalBuilder = StatementRetrievalRequest.Builder()
 
-    private val requestCode = 2005
+    private var subscriber: Disposable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Provide API KEY
-        if(Constants.API_KEY.isEmpty()) {
-            showMessage("Please provide API Key inside Constants class!")
-            Handler().postDelayed({
-                finish()
-            }, 3000)
-        }
-        else {
-            initViewPager()
-            addConfirmButtonListener()
-            addBackButtonListener()
-            addSwitchListener()
-            if (BuildConfig.AUTO_FILL_ENABLED)
-                addAutoFillListener()
-        }
+        scrollView = findViewById(R.id.scrollView)
+        useRememberMe = findViewById(R.id.useRememberMe)
+        actionBarText = findViewById(R.id.action_bar_text)
+        showActionBar = findViewById(R.id.showActionBar)
+        enableAutoConsent = findViewById(R.id.enableAutoConsent)
+        retrieveStatements = findViewById(R.id.retrieveStatements)
+        apiKey = findViewById(R.id.apiKey)
+        orgName = findViewById(R.id.orgName)
+        externalId = findViewById(R.id.externalId)
+        successURL = findViewById(R.id.successURL)
+        failURL = findViewById(R.id.failURL)
+        countrySpinner = findViewById(R.id.countrySpinner)
+        checkBoxLayout = findViewById(R.id.checkBoxLayout)
+        lstBanks = findViewById(R.id.lstBanks)
+        lstCorpBanks = findViewById(R.id.lstCorpBanks)
+        statementRetrievalLayout = findViewById(R.id.statementRetrievalLayout)
+        datePickerStart = findViewById(R.id.datePickerStart)
+        datePickerEnd = findViewById(R.id.datePickerEnd)
+        checkout = findViewById(R.id.checkout)
+
+        checkout.isEnabled = false
+        updateAPIKey()
+        initBankList()
+        initCountrySpinner()
+        initDates()
+        addListeners()
     }
 
-    override fun onResume() {
-        super.onResume()
-        resetFields()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        showProgress(false)
-    }
-
-    /**
-     * This function is used to initialize the [viewPager]. It sets the adapter and PageChangeListener
-     *
-     */
-    private fun initViewPager() {
-        viewPager.offscreenPageLimit = 0
-
-        viewPager.adapter = CustomPagerAdapter(supportFragmentManager, object : ScreenListener {
-            override fun onFieldsFilled(isFilled: Boolean, map: HashMap<String, String>, page: Int) {
-                /**
-                 * Enables the [confirmButton] only if all of the required fields are filled up and
-                 * the current sender fragment is visible
-                 */
-                if(page == viewPager.currentItem)
-                    enableConfirmButton(isFilled)
-
-                map.entries.forEach {
-                    this@MainActivity.map[it.key] = it.value
-                }
-            }
-        })
-
-        viewPager.addOnPageChangeListener(object: ViewPager.OnPageChangeListener {
-            override fun onPageScrolled(position: Int, positionOffset: Float,
-                                        positionOffsetPixels: Int) {}
-
-            override fun onPageSelected(position: Int) {
-                back.visibility = if(position > 0) View.VISIBLE else View.GONE
-                fillText.text = when (position) {
-                    sourceAccountInfo -> getString(R.string.enter_source_account_information)
-                    clientDetailsInfo -> getString(R.string.enter_pidp_details)
-                    else -> ""
-                }
-                confirmButton.text = getString(if(position == clientDetailsInfo)
-                    R.string.checkout else R.string.next
-                )
-            }
-
-            override fun onPageScrollStateChanged(state: Int) {}
-        })
-
-        stepper.setViewPager(viewPager)
-    }
-
-    private fun addConfirmButtonListener() {
-        confirmButton.setOnClickListener {
-            when (viewPager.currentItem) {
-                sourceAccountInfo -> {
-                    showPage(clientDetailsInfo)
-                }
-                clientDetailsInfo -> {
-                    val returnUrl = map[ClientDetailsFragment.RETURN_URL]
-                    val failUrl = map[ClientDetailsFragment.FAIL_URL]
-
-                    var counter = 2
-
-                    counter = checkWebPattern(returnUrl, ClientDetailsFragment.RETURN_URL, counter)
-                    counter = checkWebPattern(failUrl, ClientDetailsFragment.FAIL_URL, counter)
-
-                    if(counter == 2)
-                        checkout()
-                }
-            }
-        }
-    }
-
-    private fun checkWebPattern(url: String?, key: String, counter: Int): Int {
-        url?.let {
-            if(it.isEmpty())
-                return counter
-            if(!Patterns.WEB_URL.matcher(url).matches()) {
-                showError(key)
-                return counter - 1
-            }
-        }
-        return counter
-    }
-
-    private fun showError(tag: String) {
-        getViewPagerFragment().showError(tag)
-    }
-
-    private fun addBackButtonListener() {
-        back.setOnClickListener {
-            showPage(viewPager.currentItem - 1)
-        }
-    }
-
-    private fun enableConfirmButton(isEnabled: Boolean) {
-        confirmButton.isEnabled = isEnabled
-        confirmButton.setBackgroundColor(
-            resources.getColor(
-                if (isEnabled)
-                    R.color.colorPrimary else R.color.disabledButton
-            )
-        )
-    }
-
-    private fun showPage(page: Int) {
-        viewPager.setCurrentItem(page, true)
-    }
-
-    private fun checkout() {
-        showProgress(true)
-
-        StatementTapSDK.getEnabledBanks(getCountry(map[SourceAccountFragment.COUNTRY]!!),
-            object: CoreListener<List<Bank>> {
-            override fun onResult(data: List<Bank>?, error: CoreError?) {
-                data?.let {
-                    val request = StatementTapRequest.Builder()
-                        .country(getCountry(map[SourceAccountFragment.COUNTRY]!!))
-                        .externalId(map[ClientDetailsFragment.EXTERNAL_ID]!!)
-                        .successURL(map[ClientDetailsFragment.RETURN_URL]!!)
-                        .failURL(map[ClientDetailsFragment.FAIL_URL]!!)
-                        .organizationName(map[ClientDetailsFragment.DISPLAY_NAME]!!)
-                        .bankCodes(it.map { bank -> bank.bankCode })
-                        // Comment this part if you do not want to do a Statement Retrieval
-                        // Default start date is the day before the current day and end date is the current day
-                        .statementRetrievalRequest(StatementRetrievalRequest.Builder().build())
-
-                    isCheckoutClicked = true
-
-                    StatementTapSDK.checkout(this@MainActivity, request.build(), object: CoreListener<String?> {
-                        override fun onResult(data: String?, error: CoreError?) {
-                            resetFields()
-                        }
-                    }, requestCode)
-                }
-            }
-        })
-    }
-
-    private fun getCountry(country: String): Country {
-        return when(country) {
-            "Philippines" -> Country.PH
-            "Indonesia" -> Country.ID
-            else -> Country.TH
-        }
-    }
-
-    private fun addAutoFillListener() {
-        imgLogo.setOnClickListener {
-            getViewPagerFragment().autoFill()
-        }
-    }
-
-    private fun getViewPagerFragment(position: Int? = null): BaseFragment {
-        var index = viewPager.currentItem
-        position?.let {
-            index = it
-        }
-        return (viewPager.adapter as CustomPagerAdapter).getItem(index)
-    }
-
-    private fun showProgress(isShown: Boolean) {
-        if (isShown) {
-            progressLayout.visibility = View.VISIBLE
-            rotateAnimation.duration = 900
-            rotateAnimation.repeatCount = Animation.INFINITE
-            progress.startAnimation(rotateAnimation)
-        } else {
-            progressLayout.visibility = View.GONE
-            progress.clearAnimation()
-        }
-    }
-
-    private fun showMessage(message: String?) {
-        Snackbar.make(window.decorView.findViewById<ViewGroup>(android.R.id.content),
-            message.orEmpty(), Snackbar.LENGTH_LONG).apply {
-            setActionTextColor(Color.WHITE)
-            view.setBackgroundResource(R.color.colorPrimary)
-            view.findViewById<TextView>(R.id.snackbar_text).setTextColor(
-                ContextCompat.getColor(
-                this@MainActivity, android.R.color.white))
-        }.show()
-    }
-
-    private fun resetFields() {
-        if(isCheckoutClicked) {
-            map.clear()
-            (viewPager.adapter as CustomPagerAdapter).fragments.clear()
-            (viewPager.adapter as CustomPagerAdapter).notifyDataSetChanged()
-            viewPager.currentItem = sourceAccountInfo
-            (getViewPagerFragment(sourceAccountInfo) as SourceAccountFragment).clearFields()
-        }
-
-        isCheckoutClicked = false
-    }
-
-    override fun onBackPressed() {
-        if(viewPager.currentItem > 0)
-            showPage(viewPager.currentItem - 1)
-        else
-            super.onBackPressed()
+    override fun onDestroy() {
+        super.onDestroy()
+        subscriber?.let { it.dispose() }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if(this@MainActivity.requestCode == requestCode) {
+
+        if(requestCode == 2000) {
             if(resultCode == RESULT_OK) {
                 val statements = data?.getParcelableExtra<Reference<List<Statement>>>(
-                    StatementTapSDK.STATEMENTS)!!.get!!
-                println("STATEMENTS: "+statements.size)
-                statements.forEach {
-                    println("ACCOUNT: ${it.account.holderName} ${it.account.number} - ${it.transactions.size}")
-                    it.transactions.forEach { transaction ->
-                        println("TRANSACTION: ${transaction.id} - ${it.account.holderName}")
+                    StatementTapSDK.STATEMENTS)
+                val transactionList = mutableListOf<TransactionItemViewModel>()
+                var statementId = ""
+
+                statements?.get?.let { list ->
+                    list.forEach {
+                        statementId = it.id
+                        it.transactions.forEach { transaction ->
+                            transactionList.add(TransactionItemViewModel(transaction, it.account,
+                                false))
+                        }
+                    }
+                } ?: run {
+                    statementId = data?.getStringExtra(StatementTapSDK.STATEMENT_ID)!!
+                }
+
+                transactionList.sortBy {
+                    it.transaction.date.getDateString()
+                }
+
+                if(transactionList.isNotEmpty())
+                    transactionList.last().isLast = true
+
+                val dialogBuilder: AlertDialog.Builder = AlertDialog.Builder(this)
+                val contentView = layoutInflater.inflate(R.layout.dialog_statement, null)
+                val recyclerView = contentView.findViewById<RecyclerView>(R.id.list)
+                val closeButton = contentView.findViewById<AppCompatButton>(R.id.closeButton)
+                val downloadButton = contentView.findViewById<AppCompatButton>(R.id.downloadButton)
+                val statementIdText = contentView.findViewById<AppCompatTextView>(R.id.statementId)
+
+                statementIdText.text = "Statement ID: $statementId"
+
+                if(transactionList.isEmpty())
+                    statementIdText.text = statementIdText.text.toString() + "\n\n\nStatement List is Empty"
+
+                val adapter = StatementTransactionsAdapter(this, transactionList)
+                recyclerView.layoutManager = LinearLayoutManager(this)
+                recyclerView.adapter = adapter
+
+                dialogBuilder.setView(contentView)
+                val dialog = dialogBuilder.create()
+                dialog.show()
+
+                closeButton.setOnClickListener {
+                    dialog.dismiss()
+                }
+
+                downloadButton.setOnClickListener {
+                    dialog.dismiss()
+                    StatementTapSDK.downloadStatement(this@MainActivity, statementId,
+                        object: CoreListener<Pair<String?, ByteArray>> {
+                            override fun onResult(data: Pair<String?, ByteArray>?, error: CoreError?) {
+                                error?.let {
+                                    if (Looper.myLooper() == null)
+                                        Looper.prepare()
+                                    Toast.makeText(this@MainActivity, it.errorMessage,
+                                        Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }, true)
+                }
+            }
+            else {
+                val error = data?.getStringExtra(StatementTapSDK.ERROR)
+                val errorCode = data?.getStringExtra(StatementTapSDK.ERROR_CODE)
+                Toast.makeText(this, "$error ($errorCode)", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun initDates() {
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DATE, -1)
+        datePickerStart.updateDate(calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+        datePickerEnd.maxDate = Calendar.getInstance().timeInMillis
+    }
+
+    private fun initBankList() {
+        lstBanks.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, RecyclerView.VERTICAL, false)
+            adapter = StatementBanksAdapter(this@MainActivity, bankItems, false)
+        }
+
+        lstCorpBanks.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity, RecyclerView.VERTICAL, false)
+            adapter = StatementBanksAdapter(this@MainActivity, bankItems, true)
+        }
+    }
+
+    private fun initCountrySpinner() {
+        val dataAdapter = ArrayAdapter.createFromResource(this, R.array.countries,
+            R.layout.item_spinner)
+        countrySpinner.adapter = dataAdapter
+        countrySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int,
+                                        id: Long) {
+                val selected = when(position) {
+                    0 -> Country.ID
+                    1 -> Country.PH
+                    else -> Country.TH
+                }
+                if (selected == country) return
+
+                country = selected
+                bankItems.clear()
+                lstBanks.adapter?.notifyDataSetChanged()
+                lstCorpBanks.adapter?.notifyDataSetChanged()
+
+                StatementTapSDK.initialize(this@MainActivity, apiKey.text.toString(), null, false)
+                StatementTapSDK.getEnabledBanks(country, object : CoreListener<List<Bank>> {
+                    override fun onResult(data: List<Bank>?, error: CoreError?) {
+                        data?.let { banks ->
+                            bankItems.addAll(banks.sortedBy { it.title.lowercase() }.map {
+                                StatementBankItemViewModel(it)
+                            })
+                            lstBanks.adapter?.notifyDataSetChanged()
+                            lstCorpBanks.adapter?.notifyDataSetChanged()
+                            if (scrollToBottom) {
+                                scrollView.postDelayed({
+                                    scrollView.fullScroll(View.FOCUS_DOWN)
+                                }, 100)
+                            } else {
+                                scrollToBottom = true
+                            }
+                        } ?: run {
+                            Toast.makeText(this@MainActivity, error?.errorMessage.orEmpty(), Toast.LENGTH_LONG).show()
+                        }
+                    }
+                })
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+            }
+        }
+        countrySpinner.setSelection(1)
+    }
+
+    private fun addListeners() {
+        findViewById<AppCompatButton>(R.id.autoFill).setOnClickListener {
+            updateAPIKey()
+            orgName.setText("Organization")
+            externalId.setText("External ID")
+            successURL.setText("https://google.com")
+            failURL.setText("https://hello.com")
+            if(showActionBar.isChecked)
+                actionBarText.setText("Statement Tap")
+            checkout.isEnabled = true
+        }
+
+        subscriber?.let { it.dispose() }
+        subscriber = Observables.combineLatest(
+            Observables.combineLatest(orgName.textChanges(), externalId.textChanges(), successURL.textChanges()),
+            failURL.textChanges()
+        ).subscribe {
+            enableCheckout()
+        }
+
+        retrieveStatements.setOnCheckedChangeListener { buttonView, isChecked ->
+            statementRetrievalLayout.visibility = if(isChecked) View.VISIBLE else View.GONE
+        }
+
+        datePickerStart.setOnDateChangedListener { _, year, month, day ->
+            statementRetrievalBuilder.startDate(Calendar.getInstance().apply {
+                set(year, month, day)
+            })
+        }
+
+        datePickerEnd.setOnDateChangedListener { _, year, month, day ->
+            statementRetrievalBuilder.endDate(Calendar.getInstance().apply {
+                set(year, month, day)
+            })
+        }
+
+        showActionBar.setOnCheckedChangeListener { buttonView, isChecked ->
+            actionBarText.isEnabled = isChecked
+        }
+
+        checkout.setOnClickListener {
+            val request = StatementTapRequest.Builder()
+                .country(country)
+                .externalId(externalId.text.toString())
+                .successURL(successURL.text.toString())
+                .failURL(failURL.text.toString())
+                .organizationName(orgName.text.toString())
+                .dismissalDialog(
+                    DismissalDialog("Do you want to close the application?",
+                        "Yes", "No")
+                ).apply {
+                    if(retrieveStatements.isChecked)
+                        statementRetrievalRequest(statementRetrievalBuilder.build())
+
+                    bankCodes(getBankCodes())
+                }.build()
+
+            StatementTapSDK.initialize(this, apiKey.text.toString(), null, false)
+            StatementTapSDK.checkout(this, request, object:
+                CoreListener<String?> {
+                override fun onResult(data: String?, error: CoreError?) {
+                    error?.let {
+                        Toast.makeText(this@MainActivity, it.errorMessage, Toast.LENGTH_LONG).show()
                     }
                 }
-            }
-
-            else {
-                data?.getStringExtra(StatementTapSDK.ERROR)?.let {
-                    showMessage(it)
-                }
-            }
+            }, useRememberMe = useRememberMe.isChecked, isAutoConsent = enableAutoConsent.isChecked, requestCode = 2000,
+                actionBarText = if(showActionBar.isChecked) actionBarText.text.toString() else null)
         }
     }
 
-    private fun addSwitchListener() {
-        switchEnv.setOnCheckedChangeListener { _, isChecked ->
-            TestAppApplication.instance.updateTap(!isChecked)
-        }
+    private fun getBankCodes(): List<BankCode> {
+        return bankItems
+            .filter { it.selected }
+            .map { it.bank.bankCode }
     }
+
+    private fun updateAPIKey() {
+        apiKey.setText(Constants.API_KEY)
+    }
+
+    private fun enableCheckout() {
+        checkout.isEnabled = formValidation()
+    }
+
+    private fun formValidation() : Boolean {
+        if (apiKey.text.isNullOrBlank() || successURL.text.isNullOrBlank()
+            || failURL.text.isNullOrBlank() || externalId.text.isNullOrBlank()) {
+            return false
+        }
+
+        val successURL = successURL.text.toString()
+        if (!successURL.startsWith("http://") && !successURL.startsWith("https://") && !successURL.startsWith("www."))
+            return false
+
+        val failURL = failURL.text.toString()
+        if (!failURL.startsWith("http://") && !failURL.startsWith("https://") && !failURL.startsWith("www."))
+            return false
+
+        return true
+    }
+
 }
