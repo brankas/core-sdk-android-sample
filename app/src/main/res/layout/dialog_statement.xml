@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="@dimen/dp_10">
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:padding="10dp"
+        android:text="@string/statement_list"
+        android:layout_alignParentTop="true"
+        android:textColor="@android:color/black"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        style="@style/HeadingTextStyle"/>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/statementId"
+        android:layout_below="@+id/label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/dp_5"
+        android:gravity="center_horizontal"
+        android:textStyle="bold"
+        style="@style/NormalTextStyle"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:layout_below="@id/statementId"
+        android:layout_above="@id/closeButton"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/downloadButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        android:layout_above="@id/closeButton"
+        android:textColor="@android:color/white"
+        android:layout_margin="@dimen/dp_10"
+        android:text="@string/download_statement"
+        android:textAllCaps="true"
+        style="@style/NormalTextStyle"/>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/closeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        android:layout_alignParentBottom="true"
+        android:textColor="@android:color/white"
+        android:layout_margin="@dimen/dp_10"
+        android:text="@string/close"
+        android:textAllCaps="true"
+        style="@style/NormalTextStyle"/>
+
+</RelativeLayout>

@@ -1,42 +1,53 @@
 package com.brankas.testapp.activity;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Parcel;
-import android.util.Patterns;
+import android.os.Looper;
+import android.os.PersistableBundle;
+import android.text.TextUtils;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.RotateAnimation;
-import android.widget.Button;
-import android.widget.TextView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.DatePicker;
+import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatButton;
+import androidx.appcompat.widget.AppCompatSpinner;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.appcompat.widget.SwitchCompat;
-import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.FragmentActivity;
-import androidx.viewpager.widget.ViewPager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.badoualy.stepperindicator.StepperIndicator;
 import com.brankas.testapp.Constants;
 import com.brankas.testapp.R;
-import com.brankas.testapp.TestApplication;
-import com.brankas.testapp.adapter.CustomPagerAdapter;
-import com.brankas.testapp.fragment.BaseFragment;
-import com.brankas.testapp.fragment.ClientDetailsFragment;
-import com.brankas.testapp.fragment.SourceAccountFragment;
-import com.brankas.testapp.listener.ScreenListener;
-import com.google.android.material.snackbar.Snackbar;
+import com.brankas.testapp.adapter.StatementBanksAdapter;
+import com.brankas.testapp.adapter.StatementTransactionsAdapter;
+import com.brankas.testapp.model.StatementBankItemViewModel;
+import com.brankas.testapp.model.TransactionItemViewModel;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.common.collect.Iterables;
+import com.jakewharton.rxbinding4.widget.RxTextView;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
+import as.brank.sdk.core.CoreError;
 import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.statement.StatementTapSDK;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import kotlin.Pair;
 import tap.model.BankCode;
 import tap.model.Country;
+import tap.model.DismissalDialog;
 import tap.model.Reference;
 import tap.model.statement.Bank;
 import tap.model.statement.Statement;
@@ -50,310 +61,337 @@ import tap.request.statement.StatementTapRequest;
  */
 
 public class MainActivity extends FragmentActivity {
-    /**
-     * Pertains to the field map to be used for checkout
-     */
-    private HashMap<String, String> map = new HashMap<>();
 
-    /**
-     * Pertains to the rotation animation for the progress image
-     */
-    private RotateAnimation rotateAnimation = new RotateAnimation(0f, 360f,
-            Animation.RELATIVE_TO_SELF, 0.5f,
-            Animation.RELATIVE_TO_SELF, 0.5f);
+    private NestedScrollView scrollView;
+    private SwitchCompat useRememberMe;
+    private TextInputEditText actionBarText;
+    private SwitchCompat showActionBar;
+    private SwitchCompat enableAutoConsent;
+    private SwitchCompat retrieveStatements;
+    private TextInputEditText apiKey;
+    private TextInputEditText orgName;
+    private TextInputEditText externalId;
+    private TextInputEditText successURL;
+    private TextInputEditText failURL;
+    private AppCompatSpinner countrySpinner;
+    private LinearLayout checkBoxLayout;
+    private RecyclerView lstBanks;
+    private RecyclerView lstCorpBanks;
+    private LinearLayout statementRetrievalLayout;
+    private DatePicker datePickerStart;
+    private DatePicker datePickerEnd;
+    private AppCompatButton checkout;
 
-    /**
-     * Constants pertaining to pages or screens of the [viewPager]
-     */
-    private static final int SOURCE_ACCOUNT_INFO = 0;
-    private static final int CLIENT_DETAILS_INFO = 1;
+    private Country country = Country.UNKNOWN;
 
-    private boolean isCheckoutClicked = false;
+    private ArrayList<StatementBankItemViewModel> bankItems = new ArrayList();
+    private Boolean scrollToBottom = false;
+    private StatementRetrievalRequest.Builder statementRetrievalBuilder = new StatementRetrievalRequest.Builder();
 
-    private final int REQUEST_CODE = 2005;
+    private Disposable subscriber = null;
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Provide API KEY
-        if(Constants.API_KEY.isEmpty()) {
-            showMessage("Please provide API Key inside Constants class!");
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    finish();
-                }
-            }, 3000);
-        }
-        else {
-            initViewPager();
-            addConfirmButtonListener();
-            addBackButtonListener();
-            addSwitchListener();
-            addAutoFillListener();
-            TestApplication.getInstance().updateTap(TestApplication.getInstance().isDebug());
-        }
+        scrollView = findViewById(R.id.scrollView);
+        useRememberMe = findViewById(R.id.useRememberMe);
+        actionBarText = findViewById(R.id.action_bar_text);
+        showActionBar = findViewById(R.id.showActionBar);
+        enableAutoConsent = findViewById(R.id.enableAutoConsent);
+        retrieveStatements = findViewById(R.id.retrieveStatements);
+        apiKey = findViewById(R.id.apiKey);
+        orgName = findViewById(R.id.orgName);
+        externalId = findViewById(R.id.externalId);
+        successURL = findViewById(R.id.successURL);
+        failURL = findViewById(R.id.failURL);
+        countrySpinner = findViewById(R.id.countrySpinner);
+        checkBoxLayout = findViewById(R.id.checkBoxLayout);
+        lstBanks = findViewById(R.id.lstBanks);
+        lstCorpBanks = findViewById(R.id.lstCorpBanks);
+        statementRetrievalLayout = findViewById(R.id.statementRetrievalLayout);
+        datePickerStart = findViewById(R.id.datePickerStart);
+        datePickerEnd = findViewById(R.id.datePickerEnd);
+        checkout = findViewById(R.id.checkout);
+
+        checkout.setEnabled(false);
+        updateAPIKey();
+        initBankList();
+        initCountrySpinner();
+        initDates();
+        addListeners();
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        resetFields();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        showProgress(false);
-    }
-    /**
-     * This function is used to initialize the [viewPager]. It sets the adapter and PageChangeListener
-     *
-     */
-    private void initViewPager() {
-        ViewPager viewPager = findViewById(R.id.viewPager);
-        viewPager.setOffscreenPageLimit(0);
-        viewPager.setAdapter(new CustomPagerAdapter(getSupportFragmentManager(), new ScreenListener() {
-            @Override
-            public void onFieldsFilled(boolean isFilled, HashMap<String, String> map, int page) {
-                /**
-                 * Enables the [confirmButton] only if all of the required fields are filled up and
-                 * the current sender fragment is visible
-                 */
-                if(page == viewPager.getCurrentItem())
-                    enableConfirmButton(isFilled);
-
-                for(Map.Entry<String, String> entry: map.entrySet()) {
-                    MainActivity.this.map.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-
-            }
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-        }));
-
-        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-            @Override
-            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-
-            }
-
-            @Override
-            public void onPageSelected(int position) {
-                findViewById(R.id.back).setVisibility(position > 0 ? View.VISIBLE : View.GONE);
-                TextView fillText = findViewById(R.id.fillText);
-                switch (position) {
-                    case SOURCE_ACCOUNT_INFO:
-                        fillText.setText(getString(R.string.enter_source_account_information));
-                        break;
-                    case CLIENT_DETAILS_INFO:
-                        fillText.setText(getString(R.string.enter_pidp_details));
-                        break;
-                }
-
-                ((Button) findViewById(R.id.confirmButton)).setText(
-                        getString(position == CLIENT_DETAILS_INFO ?
-                                R.string.checkout : R.string.next));
-            }
-
-            @Override
-            public void onPageScrollStateChanged(int state) {
-
-            }
-        });
-
-        ((StepperIndicator) findViewById(R.id.stepper)).setViewPager(viewPager);
-    }
-
-    private void addConfirmButtonListener() {
-        findViewById(R.id.confirmButton).setOnClickListener(v -> {
-            int currentItem = ((ViewPager) findViewById(R.id.viewPager)).getCurrentItem();
-            if(currentItem == SOURCE_ACCOUNT_INFO)
-                showPage(CLIENT_DETAILS_INFO);
-            else if(currentItem == CLIENT_DETAILS_INFO) {
-                String returnUrl = map.get(ClientDetailsFragment.RETURN_URL);
-                String failUrl = map.get(ClientDetailsFragment.FAIL_URL);
-
-                int counter = 2;
-
-                counter = checkWebPattern(returnUrl, ClientDetailsFragment.RETURN_URL, counter);
-                counter = checkWebPattern(failUrl, ClientDetailsFragment.FAIL_URL, counter);
-
-                if(counter == 2)
-                    checkout();
-            }
-        });
-    }
-
-    private int checkWebPattern(String url, String key, int counter) {
-        if(url != null) {
-            if(url.isEmpty())
-                return counter;
-            if(!Patterns.WEB_URL.matcher(url).matches()) {
-                showError(key);
-                return counter - 1;
-            }
-        }
-        return counter;
-    }
-
-    private void showError(String tag) {
-        getViewPagerFragment(((ViewPager) findViewById(R.id.viewPager))
-                .getCurrentItem()).showError(tag);
-    }
-
-    private void addBackButtonListener() {
-        findViewById(R.id.back).setOnClickListener(v ->
-                showPage(((ViewPager) findViewById(R.id.viewPager)).getCurrentItem() - 1));
-    }
-
-    private void enableConfirmButton(boolean isEnabled) {
-        findViewById(R.id.confirmButton).setEnabled(isEnabled);
-        findViewById(R.id.confirmButton).setBackgroundColor(
-                getResources().getColor(isEnabled ? R.color.colorPrimary : R.color.disabledButton));
-    }
-
-    private void showPage(int page) {
-        ((ViewPager) findViewById(R.id.viewPager)).setCurrentItem(page, true);
-    }
-
-    private void checkout() {
-        showProgress(true);
-
-        isCheckoutClicked = true;
-
-        StatementTapSDK.INSTANCE.getEnabledBanks(getCountry(map.get(SourceAccountFragment.COUNTRY)),
-                (CoreListener<List<Bank>>) (banks, coreError) -> {
-
-            StatementTapRequest.Builder request = new StatementTapRequest.Builder()
-                    .country(getCountry(map.get(SourceAccountFragment.COUNTRY)))
-                    .externalId(map.get(ClientDetailsFragment.EXTERNAL_ID))
-                    .successURL(map.get(ClientDetailsFragment.RETURN_URL))
-                    .failURL(map.get(ClientDetailsFragment.FAIL_URL))
-                    .organizationName(map.get(ClientDetailsFragment.DISPLAY_NAME))
-                    // Comment this part if you do not want to do a Statement Retrieval
-                    // Default start date is the day before the current day and end date is the current day
-                    .statementRetrievalRequest(new StatementRetrievalRequest.Builder().build());
-
-            StatementTapSDK.INSTANCE.checkout(MainActivity.this, request.build(),
-                    (CoreListener<String>) (str, coreError1) -> {
-                if(coreError1 != null) {
-                    showProgress(false);
-                    showMessage(coreError1.getErrorMessage());
-                }
-                else
-                    showMessage("Transaction Successful! Here is the transaction id: "+str);
-                resetFields();
-            }, REQUEST_CODE, false, false, null);
-        });
-    }
-
-    private Country getCountry(String country) {
-        switch(country) {
-            case "Philippines":
-                return Country.PH;
-            case "Indonesia":
-                return Country.ID;
-            default:
-                return Country.TH;
-        }
-    }
-
-    private void addAutoFillListener() {
-        findViewById(R.id.imgLogo).setOnClickListener(v ->
-                getViewPagerFragment(((ViewPager)findViewById(R.id.viewPager))
-                        .getCurrentItem()).autoFill());
-    }
-
-    private BaseFragment getViewPagerFragment(int position) {
-        return ((CustomPagerAdapter)((ViewPager)findViewById(R.id.viewPager)).getAdapter())
-                .getItem(position);
-    }
-
-    private void showProgress(boolean isShown) {
-        if (isShown) {
-            findViewById(R.id.progressLayout).setVisibility(View.VISIBLE);
-            rotateAnimation.setDuration(900);
-            rotateAnimation.setRepeatCount(Animation.INFINITE);
-            findViewById(R.id.progress).startAnimation(rotateAnimation);
-        } else {
-            findViewById(R.id.progressLayout).setVisibility(View.GONE);
-            findViewById(R.id.progress).clearAnimation();
-        }
-    }
-
-    private void showMessage(String message) {
-        Snackbar snackbar = Snackbar.make(getWindow().getDecorView().findViewById(
-                android.R.id.content), message, Snackbar.LENGTH_LONG);
-        snackbar.setActionTextColor(Color.WHITE);
-        snackbar.getView().setBackgroundResource(R.color.colorPrimary);
-        ((TextView)snackbar.getView().findViewById(R.id.snackbar_text)).setTextColor(
-                ContextCompat.getColor(this, android.R.color.white));
-        snackbar.show();
-    }
-
-    private void resetFields() {
-        if(isCheckoutClicked) {
-            map.clear();
-            CustomPagerAdapter customPagerAdapter = (CustomPagerAdapter)
-                    ((ViewPager)findViewById(R.id.viewPager)).getAdapter();
-            customPagerAdapter.getFragments().clear();
-            customPagerAdapter.notifyDataSetChanged();
-
-            ((ViewPager)findViewById(R.id.viewPager)).setCurrentItem(SOURCE_ACCOUNT_INFO);
-            ((SourceAccountFragment) getViewPagerFragment(SOURCE_ACCOUNT_INFO)).clearFields();
-        }
-
-        isCheckoutClicked = false;
-    }
-
-    @Override
-    public void onBackPressed() {
-        if(((ViewPager)findViewById(R.id.viewPager)).getCurrentItem() > 0)
-            showPage(((ViewPager)findViewById(R.id.viewPager)).getCurrentItem()- 1);
-        else
-            super.onBackPressed();
+    protected void onDestroy() {
+        super.onDestroy();
+        if (null != subscriber)
+            subscriber.dispose();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == REQUEST_CODE) {
-            if(resultCode == RESULT_OK) {
-                List<Statement> statements = ((Reference<List<Statement>>)
-                        data.getParcelableExtra(StatementTapSDK.STATEMENTS)).getGet();
-                System.out.println("STATEMENTS: "+statements.size());
-                for(Statement statement: statements) {
-                    System.out.println("ACCOUNT: "+statement.getAccount().getHolderName()
-                            +" "+statement.getAccount().getNumber()+" - "
-                            +statement.getTransactions().size());
-                    for(Transaction transaction: statement.getTransactions()) {
-                        System.out.println("TRANSACTION: "+transaction.getId()+" "
-                                +statement.getAccount().getHolderName());
-                    }
-                }
-            }
 
-            else {
-                if(data.getStringExtra(StatementTapSDK.ERROR) != null) {
-                    showMessage(data.getStringExtra(StatementTapSDK.ERROR)+" - "
-                            +data.getStringExtra(StatementTapSDK.ERROR_CODE));
-                }
-            }
+        if (2000 != requestCode) return;
+
+        if (resultCode != RESULT_OK) {
+            String error = (null != data && null != data.getStringExtra(StatementTapSDK.ERROR))
+                    ? data.getStringExtra(StatementTapSDK.ERROR) : "";
+            String errorCode = (null != data && null != data.getStringExtra(StatementTapSDK.ERROR_CODE))
+                    ? data.getStringExtra(StatementTapSDK.ERROR_CODE) : "";
+            Toast.makeText(this, error + " (" + errorCode + ")", Toast.LENGTH_LONG).show();
         }
+
+        if (null == data) return;
+
+        Reference<List<Statement>> statements = data.getParcelableExtra(StatementTapSDK.STATEMENTS);
+        ArrayList<TransactionItemViewModel> transactionList = new ArrayList();
+        String statementId = "";
+
+        if (null != statements && null != statements.getGet()) {
+            List<Statement> list = statements.getGet();
+            for (Statement item : list) {
+                statementId = item.getId();
+                for (Transaction transaction : item.getTransactions()) {
+                    transactionList.add(new TransactionItemViewModel(transaction, item.getAccount(), false));
+                }
+            }
+        } else {
+            statementId = (null != data.getStringExtra(StatementTapSDK.STATEMENT_ID)) ? data.getStringExtra(StatementTapSDK.STATEMENT_ID) : "";
+        }
+
+        transactionList.sort(Comparator.comparing(TransactionItemViewModel::getDateString));
+
+        if(!transactionList.isEmpty())
+            Iterables.getLast(transactionList).setLast(true);
+
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        View contentView = getLayoutInflater().inflate(R.layout.dialog_statement, null);
+        RecyclerView recyclerView = contentView.findViewById(R.id.list);
+        AppCompatButton closeButton = contentView.findViewById(R.id.closeButton);
+        AppCompatButton downloadButton = contentView.findViewById(R.id.downloadButton);
+        AppCompatTextView statementIdText = contentView.findViewById(R.id.statementId);
+
+        statementIdText.setText("Statement ID: " + statementId);
+
+        if(transactionList.isEmpty())
+            statementIdText.setText(statementIdText.getText().toString() + "\n\n\nStatement List is Empty");
+
+        StatementTransactionsAdapter adapter = new StatementTransactionsAdapter(this, transactionList);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+
+        dialogBuilder.setView(contentView);
+        AlertDialog dialog = dialogBuilder.create();
+        dialog.show();
+
+        closeButton.setOnClickListener(view -> {
+            dialog.dismiss();
+        });
+
+        String finalStatementId = statementId;
+        downloadButton.setOnClickListener(view -> {
+            dialog.dismiss();
+            StatementTapSDK.INSTANCE.downloadStatement(this, finalStatementId, (CoreListener<Pair<String, byte[]>>) (pair, error) -> {
+                if (null != error) {
+                    if (null == Looper.myLooper())
+                        Looper.prepare();
+
+                    Toast.makeText(this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
+                }
+            }, true);
+        });
     }
 
-    private void addSwitchListener() {
-        ((SwitchCompat) findViewById(R.id.switchEnv)).setOnCheckedChangeListener(
-                (buttonView, isChecked) -> TestApplication.getInstance().updateTap(!isChecked));
+    private void initDates() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, -1);
+        datePickerStart.updateDate(
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+        );
+        datePickerEnd.setMaxDate(Calendar.getInstance().getTimeInMillis());
     }
+
+    private void initBankList() {
+        lstBanks.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
+        lstBanks.setAdapter(new StatementBanksAdapter(this, bankItems, false));
+
+        lstCorpBanks.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
+        lstCorpBanks.setAdapter(new StatementBanksAdapter(this, bankItems, true));
+    }
+
+    private void initCountrySpinner() {
+        ArrayAdapter dataAdapter = ArrayAdapter.createFromResource(this, R.array.countries, R.layout.item_spinner);
+        countrySpinner.setAdapter(dataAdapter);
+        countrySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Country selected = Country.TH;
+                if (0 == position) selected = Country.ID;
+                else if (1 == position) selected = Country.PH;
+
+                if (selected == country) return;
+
+                country = selected;
+                bankItems.clear();
+                lstBanks.getAdapter().notifyDataSetChanged();
+                lstCorpBanks.getAdapter().notifyDataSetChanged();
+
+                StatementTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
+                StatementTapSDK.INSTANCE.getEnabledBanks(country, new CoreListener<List<Bank>>() {
+                    @Override
+                    public void onResult(@Nullable List<Bank> banks, @Nullable CoreError error) {
+                        if (null == banks) {
+                            String message = (null != error && null != error.getErrorMessage()) ? error.getErrorMessage() : "";
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        banks.sort(Comparator.comparing(bank -> bank.getTitle().toLowerCase()));
+                        for (Bank bank : banks) {
+                            bankItems.add(new StatementBankItemViewModel(bank, true));
+                        }
+                        lstBanks.getAdapter().notifyDataSetChanged();
+                        lstCorpBanks.getAdapter().notifyDataSetChanged();
+                        if (scrollToBottom) {
+                            scrollView.postDelayed(() -> scrollView.fullScroll(View.FOCUS_DOWN), 100);
+                        } else {
+                            scrollToBottom = true;
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+
+        countrySpinner.setSelection(1);
+    }
+
+    private void addListeners() {
+        findViewById(R.id.autoFill).setOnClickListener(view -> {
+            updateAPIKey();
+            orgName.setText("Organization");
+            externalId.setText("External ID");
+            successURL.setText("https://google.com");
+            failURL.setText("https://hello.com");
+            if(showActionBar.isChecked())
+                actionBarText.setText("Statement Tap");
+            checkout.setEnabled(true);
+        });
+
+        if (null != subscriber) subscriber.dispose();
+
+        ArrayList<Observable<CharSequence>> list = new ArrayList();
+        list.add(RxTextView.textChanges(orgName));
+        list.add(RxTextView.textChanges(externalId));
+        list.add(RxTextView.textChanges(successURL));
+        list.add(RxTextView.textChanges(failURL));
+
+        subscriber = Observable.combineLatest(list, args -> {
+            for (int i = 0; i < args.length; i ++) {
+                if (TextUtils.isEmpty(args[i].toString().trim())) {
+                    return false;
+                }
+            }
+            return true;
+        })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(isEnable -> {
+                    enableCheckout();
+                });
+
+        retrieveStatements.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            statementRetrievalLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        datePickerStart.setOnDateChangedListener((datePicker, year, month, day) -> {
+            Calendar cal = Calendar.getInstance();
+            cal.set(year, month, day);
+            statementRetrievalBuilder.startDate(cal);
+        });
+
+        datePickerEnd.setOnDateChangedListener((datePicker, year, month, day) -> {
+            Calendar cal = Calendar.getInstance();
+            cal.set(year, month, day);
+            statementRetrievalBuilder.endDate(cal);
+        });
+
+        showActionBar.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            actionBarText.setEnabled(isChecked);
+        });
+
+        checkout.setOnClickListener(view -> {
+            StatementTapRequest.Builder builder = new StatementTapRequest.Builder()
+                    .country(country)
+                    .externalId(externalId.getText().toString())
+                    .successURL(successURL.getText().toString())
+                    .failURL(failURL.getText().toString())
+                    .organizationName(orgName.getText().toString())
+                    .dismissalDialog(
+                            new DismissalDialog("Do you want to close the application?",
+                                                "Yes", "No")
+                    );
+
+
+            if(retrieveStatements.isChecked())
+                builder.statementRetrievalRequest(statementRetrievalBuilder.build());
+
+            builder.bankCodes(getBankCodes());
+
+            StatementTapRequest request = builder.build();
+
+            StatementTapSDK.INSTANCE.initialize(this, apiKey.getText().toString(), null, false);
+            StatementTapSDK.INSTANCE.checkout(this, request, (CoreListener<String>) (data, error) -> {
+                if (null != error) {
+                    Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
+                }
+            }, 2000, enableAutoConsent.isChecked(), useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null);
+        });
+    }
+
+    private List<BankCode> getBankCodes() {
+        ArrayList<BankCode> bankCodes = new ArrayList();
+        for (StatementBankItemViewModel item : bankItems) {
+            if (item.isSelected())
+                bankCodes.add(item.getBank().getBankCode());
+        }
+
+        return bankCodes;
+    }
+    
+    private void updateAPIKey() {
+        apiKey.setText(Constants.API_KEY);
+    }
+
+    private void enableCheckout() {
+        checkout.setEnabled(formValidation());
+    }
+    
+    private Boolean formValidation() {
+        if (null == apiKey.getText() || apiKey.getText().toString().trim().isEmpty()
+                || null == successURL.getText() || successURL.getText().toString().trim().isEmpty()
+                || null == failURL.getText() || failURL.getText().toString().trim().isEmpty()
+                || null == externalId.getText() || externalId.getText().toString().trim().isEmpty()) {
+                    return false;
+        }
+
+        String successURL = this.successURL.getText().toString();
+        if (!successURL.startsWith("http://") && !successURL.startsWith("https://") && !successURL.startsWith("www."))
+            return false;
+
+        String failURL = this.failURL.getText().toString();
+        if (!failURL.startsWith("http://") && !failURL.startsWith("https://") && !failURL.startsWith("www."))
+            return false;
+
+        return true;
+    }
+
 }
