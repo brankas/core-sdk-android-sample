@@ -1,35 +1,19 @@
 <resources>
-    <string name="app_name">IDP Demo</string>]
+    <string name="app_name">Balance Test</string>]
 
-    <!-- SOURCE ACCOUNT DETAILS -->
-    <string name="enter_source_account_information">Enter Source Account Details</string>
-    <string name="first_name">First Name</string>
-    <string name="last_name">Last Name</string>
-    <string name="email">Email</string>
-    <string name="mobile_number">Mobile Number</string>
-    <string name="invalid_email">Invalid email format</string>
-
-    <!-- TRANSFER DETAILS -->
-    <string name="destination_account_id">Destination Account ID</string>
-    <string name="amount">Amount</string>
-    <string name="memo">Memo</string>
-    <string name="reference_id">Reference ID</string>
-    <string name="invalid_destination_account">Destination Account ID should be 36 characters!</string>
-    <string name="enter_transfer_details">Enter Transfer Details</string>
-
-    <!-- pIDP CUSTOMIZATION DETAILS -->
-    <string name="display_name">Organizational Name</string>
-    <string name="return_url">Return URL</string>
-    <string name="fail_url">Fail URL</string>
+    <string name="auto_fill_details">Auto Fill Details</string>
+    <string name="api_key">API Key</string>
+    <string name="use_remember_me">Use Remember Me</string>
+    <string name="enable_auto_consent">Enable Auto Consent</string>
+    <string name="org_name">Organizational Name</string>
     <string name="external_id">External ID</string>
-    <string name="enter_pidp_details">Enter Tap Customization Details</string>
-    <string name="invalid_url_format">Invalid URL Format</string>
-
-    <!-- BUTTON LABELS -->
+    <string name="success_url">Success URL</string>
+    <string name="fail_url">Fail URL</string>
+    <string name="select_country">Select Country</string>
+    <string name="select_banks">Select Banks</string>
     <string name="checkout">Checkout</string>
-    <string name="next">Next</string>
-
-    <!-- IMAGE DESCRIPTION -->
-    <string name="progress">Progress</string>
+    <string name="action_bar_text">Action Bar Text</string>
+    <string name="personal">Personal</string>
+    <string name="corporate">Corporate</string>
     <string name="bank_logo">Bank Logo</string>
 </resources>
