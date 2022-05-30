@@ -1,43 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="countries">
-        <item>Philippines</item>
+    <string-array name="countries_direct">
         <item>Indonesia</item>
+        <item>Philippines</item>
     </string-array>
-
-    <string-array name="idBanks">
-        <item>None</item>
-        <item>BCA</item>
-        <item>BNI</item>
-        <item>BRI</item>
-        <item>Mandiri</item>
-    </string-array>
-
-    <string-array name="phBanks">
-        <item>None</item>
-        <item>BDO</item>
-        <item>BPI</item>
-        <item>MetroBank</item>
-        <item>PNB</item>
-        <item>RCBC</item>
-        <item>Union Bank</item>
-    </string-array>
-
-    <integer-array name="phLogos">
-        <item>0</item>
-        <item>@drawable/bdo</item>
-        <item>@drawable/bpi_logo</item>
-        <item>@drawable/metrobank_logo</item>
-        <item>@drawable/pnb_logo</item>
-        <item>@drawable/rcbc_large</item>
-        <item>@drawable/unionbank_large</item>
-    </integer-array>
-
-    <integer-array name="idLogos">
-        <item>0</item>
-        <item>@drawable/bca_logo</item>
-        <item>@drawable/bni_logo</item>
-        <item>@drawable/bri_logo</item>
-        <item>@drawable/mandiri</item>
-    </integer-array>
 </resources>

@@ -1,35 +1,28 @@
 <resources>
-    <string name="app_name">IDP Demo</string>]
+    <string name="app_name">Direct Test</string>]
 
-    <!-- SOURCE ACCOUNT DETAILS -->
-    <string name="enter_source_account_information">Enter Source Account Details</string>
+    <string name="auto_fill_details">Auto Fill Details</string>
+    <string name="api_key">API Key</string>
+    <string name="use_remember_me">Use Remember Me</string>
+    <string name="org_name">Organizational Name</string>
+    <string name="success_url">Success URL</string>
+    <string name="fail_url">Fail URL</string>
+    <string name="select_country">Select Country</string>
+    <string name="checkout">Checkout</string>
+    <string name="enable_expiry_date">Enable Expiry Date</string>
+    <string name="enable_logo_url">Enable Logo URL</string>
     <string name="first_name">First Name</string>
     <string name="last_name">Last Name</string>
-    <string name="email">Email</string>
+    <string name="email_address">Email Address</string>
     <string name="mobile_number">Mobile Number</string>
-    <string name="invalid_email">Invalid email format</string>
-
-    <!-- TRANSFER DETAILS -->
     <string name="destination_account_id">Destination Account ID</string>
     <string name="amount">Amount</string>
     <string name="memo">Memo</string>
     <string name="reference_id">Reference ID</string>
-    <string name="invalid_destination_account">Destination Account ID should be 36 characters!</string>
-    <string name="enter_transfer_details">Enter Transfer Details</string>
-
-    <!-- pIDP CUSTOMIZATION DETAILS -->
-    <string name="display_name">Display Name (Optional)</string>
-    <string name="logoUrl">Logo URL (Optional)</string>
-    <string name="return_url">Return URL (Optional)</string>
-    <string name="fail_url">Fail URL (Optional)</string>
-    <string name="enter_pidp_details">Enter pIDP Customization Details</string>
-    <string name="invalid_url_format">Invalid URL Format</string>
-
-    <!-- BUTTON LABELS -->
-    <string name="checkout">Checkout</string>
-    <string name="next">Next</string>
-
-    <!-- IMAGE DESCRIPTION -->
-    <string name="progress">Progress</string>
+    <string name="select_destination_bank">Select Destination Bank</string>
+    <string name="select_source_bank">Select Source Bank</string>
+    <string name="logo_url">Logo URL</string>
+    <string name="expiry_date">Expiry Date</string>
+    <string name="action_bar_text">Action Bar Text</string>
     <string name="bank_logo">Bank Logo</string>
 </resources>

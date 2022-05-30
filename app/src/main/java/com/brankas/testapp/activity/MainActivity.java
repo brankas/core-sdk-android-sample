@@ -1,42 +1,43 @@
 package com.brankas.testapp.activity;
 
+
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Parcel;
-import android.util.Patterns;
+import android.text.TextUtils;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.RotateAnimation;
-import android.widget.Button;
-import android.widget.TextView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.DatePicker;
+import android.widget.LinearLayout;
+import android.widget.TimePicker;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatButton;
+import androidx.appcompat.widget.AppCompatSpinner;
 import androidx.appcompat.widget.SwitchCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
-import androidx.viewpager.widget.ViewPager;
 
-import com.badoualy.stepperindicator.StepperIndicator;
 import com.brankas.testapp.Constants;
 import com.brankas.testapp.R;
-import com.brankas.testapp.TestApplication;
-import com.brankas.testapp.adapter.CustomPagerAdapter;
-import com.brankas.testapp.fragment.BaseFragment;
-import com.brankas.testapp.fragment.ClientDetailsFragment;
-import com.brankas.testapp.fragment.SourceAccountFragment;
-import com.brankas.testapp.fragment.TransferDetailsFragment;
-import com.brankas.testapp.listener.ScreenListener;
-import com.google.android.material.snackbar.Snackbar;
+import com.brankas.testapp.adapter.BankSpinnerItemAdapter;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+import com.jakewharton.rxbinding4.widget.RxTextView;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.Locale;
 
-import as.brank.sdk.core.CoreError;
 import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.direct.DirectTapSDK;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.disposables.Disposable;
 import tap.model.Amount;
 import tap.model.BankCode;
 import tap.model.Country;
@@ -44,9 +45,11 @@ import tap.model.Currency;
 import tap.model.DismissalDialog;
 import tap.model.Reference;
 import tap.model.direct.Account;
+import tap.model.direct.Bank;
 import tap.model.direct.Client;
 import tap.model.direct.Customer;
-import tap.model.direct.Status;
+import tap.model.direct.FundTransferFee;
+import tap.model.direct.FundTransferLimit;
 import tap.model.direct.Transaction;
 import tap.request.direct.DirectTapRequest;
 
@@ -56,396 +59,510 @@ import tap.request.direct.DirectTapRequest;
  */
 
 public class MainActivity extends FragmentActivity {
-    /**
-     * Pertains to the field map to be used for checkout
-     */
-    private HashMap<String, String> map = new HashMap<>();
 
-    /**
-     * Pertains to the rotation animation for the progress image
-     */
-    private RotateAnimation rotateAnimation = new RotateAnimation(0f, 360f,
-            Animation.RELATIVE_TO_SELF, 0.5f,
-            Animation.RELATIVE_TO_SELF, 0.5f);
+    private SwitchCompat useRememberMe;
+    private SwitchCompat showActionBar;
+    private TextInputEditText actionBarText;
+    private SwitchCompat enableExpiryDate;
+    private SwitchCompat enableLogoURL;
+    private TextInputEditText apiKey;
+    private TextInputEditText firstName;
+    private TextInputEditText lastName;
+    private TextInputEditText emailAddress;
+    private TextInputEditText mobileNumber;
+    private TextInputEditText destinationAccountId;
+    private TextInputEditText amount;
+    private TextInputEditText memo;
+    private TextInputEditText referenceID;
+    private TextInputEditText orgName;
+    private TextInputEditText successURL;
+    private TextInputEditText failURL;
+    private TextInputLayout logoURLLayout;
+    private TextInputEditText logoURL;
+    private AppCompatSpinner countrySpinner;
+    private LinearLayout destinationBankLayout;
+    private AppCompatSpinner destinationBankSpinner;
+    private LinearLayout sourceBankLayout;
+    private AppCompatSpinner sourceBankSpinner;
+    private LinearLayout expiryDateLayout;
+    private DatePicker datePicker;
+    private TimePicker timePicker;
+    private AppCompatButton checkout;
 
-    /**
-     * Constants pertaining to pages or screens of the [viewPager]
-     */
-    private static final int SOURCE_ACCOUNT_INFO = 0;
-    private static final int TRANSFER_DETAILS_INFO = 1;
-    private static final int CLIENT_DETAILS_INFO = 2;
+    private Country country = Country.PH;
+    private ArrayList<Bank> banks = new ArrayList();
+    private Bank selectedDestBank;
+    private Bank selectedSourceBank;
 
-    private boolean isCheckoutClicked = false;
+    private Disposable subscriber;
+    private BankSpinnerItemAdapter destBankSpinnerAdapter;
 
-    private final int REQUEST_CODE = 2005;
+    private Bank[] idBanks = {
+            new Bank(BankCode.UNRECOGNIZED, Country.ID, "None", "",
+                    new FundTransferLimit(
+                            Currency.UNKNOWN_CURRENCY,
+                            fastcheckout.FundTransferLimit.getDefaultInstance()
+                    ),
+                    new FundTransferFee(
+                        Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()
+                    ), false
+            ),
+            new Bank(BankCode.BCA_PERSONAL, Country.ID, "BCA", "",
+                    new FundTransferLimit(
+                            Currency.UNKNOWN_CURRENCY,
+                            fastcheckout.FundTransferLimit.getDefaultInstance()
+                    ),
+                    new FundTransferFee(
+                        Currency.UNKNOWN_CURRENCY,
+                        fastcheckout.FundTransferFee.getDefaultInstance()
+                    ), false
+            ),
+            new Bank(BankCode.BNI_PERSONAL, Country.ID, "BNI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+            new Bank(BankCode.BRI_PERSONAL, Country.ID, "BRI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+            new Bank(BankCode.MANDIRI_PERSONAL, Country.ID, "Mandiri", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false)
+    };
+
+    private Bank[] phBanks = {
+        new Bank(BankCode.UNRECOGNIZED, Country.PH, "None", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.BDO_PERSONAL, Country.PH, "BDO", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.BPI_PERSONAL, Country.PH, "BPI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.EASTWEST_PERSONAL, Country.PH, "EastWest Bank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.LANDBANK_PERSONAL, Country.PH, "LandBank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.METROBANK_PERSONAL, Country.PH, "MetroBank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.PNB_PERSONAL, Country.PH, "PNB", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.RCBC_PERSONAL, Country.PH, "RCBC", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+        new Bank(BankCode.UNIONBANK_PERSONAL, Country.PH, "Union Bank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false)
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Provide API KEY
-        if(Constants.API_KEY_DIRECT.isEmpty()) {
-            showMessage("Please provide API Key inside Constants class!");
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    finish();
-                }
-            }, 3000);
-        }
-        else {
-            initViewPager();
-            addConfirmButtonListener();
-            addBackButtonListener();
-            addSwitchListener();
-            addAutoFillListener();
-            TestApplication.getInstance().updateTap(TestApplication.getInstance().isDebug());
-        }
+        useRememberMe = findViewById(R.id.useRememberMe);
+        showActionBar = findViewById(R.id.showActionBar);
+        actionBarText = findViewById(R.id.action_bar_text);
+        enableExpiryDate = findViewById(R.id.enableExpiryDate);
+        enableLogoURL = findViewById(R.id.enableLogoURL);
+        apiKey = findViewById(R.id.apiKey);
+        firstName = findViewById(R.id.firstName);
+        lastName = findViewById(R.id.lastName);
+        emailAddress = findViewById(R.id.emailAddress);
+        mobileNumber = findViewById(R.id.mobileNumber);
+        destinationAccountId = findViewById(R.id.destinationAccountId);
+        amount = findViewById(R.id.amount);
+        memo = findViewById(R.id.memo);
+        referenceID = findViewById(R.id.referenceID);
+        orgName = findViewById(R.id.orgName);
+        successURL = findViewById(R.id.successURL);
+        failURL = findViewById(R.id.failURL);
+        logoURLLayout = findViewById(R.id.logoURLLayout);
+        logoURL = findViewById(R.id.logoURL);
+        countrySpinner = findViewById(R.id.countrySpinner);
+        destinationBankLayout = findViewById(R.id.destinationBankLayout);
+        destinationBankSpinner = findViewById(R.id.destinationBankSpinner);
+        sourceBankLayout = findViewById(R.id.sourceBankLayout);
+        sourceBankSpinner = findViewById(R.id.sourceBankSpinner);
+        expiryDateLayout = findViewById(R.id.expiryDateLayout);
+        datePicker = findViewById(R.id.datePicker);
+        timePicker = findViewById(R.id.timePicker);
+        checkout = findViewById(R.id.checkout);
+
+        checkout.setEnabled(false);
+        updateAPIKey();
+        initCountrySpinner();
+        addListeners();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        resetFields();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        showProgress(false);
-    }
-
-    /**
-     * This function is used to initialize the [viewPager]. It sets the adapter and PageChangeListener
-     *
-     */
-    private void initViewPager() {
-        ViewPager viewPager = findViewById(R.id.viewPager);
-        viewPager.setOffscreenPageLimit(0);
-        viewPager.setAdapter(new CustomPagerAdapter(getSupportFragmentManager(), new ScreenListener() {
-            @Override
-            public void onFieldsFilled(boolean isFilled, HashMap<String, String> map, int page) {
-                /**
-                 * Enables the [confirmButton] only if all of the required fields are filled up and
-                 * the current sender fragment is visible
-                 */
-                if(page == viewPager.getCurrentItem())
-                    enableConfirmButton(isFilled);
-
-                for(Map.Entry<String, String> entry: map.entrySet()) {
-                    MainActivity.this.map.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-
-            }
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-        }));
-
-        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
-            @Override
-            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-
-            }
-
-            @Override
-            public void onPageSelected(int position) {
-                findViewById(R.id.back).setVisibility(position > 0 ? View.VISIBLE : View.GONE);
-                TextView fillText = findViewById(R.id.fillText);
-                switch (position) {
-                    case SOURCE_ACCOUNT_INFO:
-                        fillText.setText(getString(R.string.enter_source_account_information));
-                        break;
-                    case TRANSFER_DETAILS_INFO:
-                        fillText.setText(getString(R.string.enter_transfer_details));
-                        break;
-                    case CLIENT_DETAILS_INFO:
-                        fillText.setText(getString(R.string.enter_pidp_details));
-                        break;
-                }
-
-                ((Button) findViewById(R.id.confirmButton)).setText(
-                        getString(position == CLIENT_DETAILS_INFO ?
-                                R.string.checkout : R.string.next));
-
-                if(position == TRANSFER_DETAILS_INFO)
-                    ((TransferDetailsFragment)(getViewPagerFragment(TRANSFER_DETAILS_INFO)))
-                        .addAmountPrefix(getCurrency(map.get(SourceAccountFragment.COUNTRY)).name());
-            }
-
-            @Override
-            public void onPageScrollStateChanged(int state) {
-
-            }
-        });
-
-        ((StepperIndicator) findViewById(R.id.stepper)).setViewPager(viewPager);
-    }
-
-    private void addConfirmButtonListener() {
-        findViewById(R.id.confirmButton).setOnClickListener(v -> {
-            int currentItem = ((ViewPager) findViewById(R.id.viewPager)).getCurrentItem();
-            if(currentItem == SOURCE_ACCOUNT_INFO) {
-                if(Patterns.EMAIL_ADDRESS.matcher(map.get(SourceAccountFragment.EMAIL)).matches())
-                    showPage(TRANSFER_DETAILS_INFO);
-                else
-                    showError(SourceAccountFragment.EMAIL);
-            }
-            else if(currentItem == TRANSFER_DETAILS_INFO) {
-                if(map.get(TransferDetailsFragment.DESTINATION_ACCOUNT_ID).length() ==
-                        TransferDetailsFragment.MAX_DESTINATION_ACCOUNT_ID)
-                    showPage(CLIENT_DETAILS_INFO);
-                else
-                    showError(TransferDetailsFragment.DESTINATION_ACCOUNT_ID);
-            }
-            else if(currentItem == CLIENT_DETAILS_INFO) {
-                String logoUrl = map.get(ClientDetailsFragment.LOGO_URL);
-                String returnUrl = map.get(ClientDetailsFragment.RETURN_URL);
-                String failUrl = map.get(ClientDetailsFragment.FAIL_URL);
-
-                int counter = 3;
-
-                counter = checkWebPattern(logoUrl, ClientDetailsFragment.LOGO_URL, counter);
-                counter = checkWebPattern(returnUrl, ClientDetailsFragment.RETURN_URL, counter);
-                counter = checkWebPattern(failUrl, ClientDetailsFragment.FAIL_URL, counter);
-
-                if(counter == 3)
-                    checkout();
-            }
-        });
-    }
-
-    private int checkWebPattern(String url, String key, int counter) {
-        if(url != null) {
-            if(url.isEmpty())
-                return counter;
-            if(!Patterns.WEB_URL.matcher(url).matches()) {
-                showError(key);
-                return counter - 1;
-            }
-        }
-        return counter;
-    }
-
-    private void showError(String tag) {
-        getViewPagerFragment(((ViewPager) findViewById(R.id.viewPager))
-                .getCurrentItem()).showError(tag);
-    }
-
-    private void addBackButtonListener() {
-        findViewById(R.id.back).setOnClickListener(v ->
-                showPage(((ViewPager) findViewById(R.id.viewPager)).getCurrentItem() - 1));
-    }
-
-    private void enableConfirmButton(boolean isEnabled) {
-        findViewById(R.id.confirmButton).setEnabled(isEnabled);
-        findViewById(R.id.confirmButton).setBackgroundColor(
-            getResources().getColor(isEnabled ? R.color.colorPrimary : R.color.disabledButton));
-    }
-
-    private void showPage(int page) {
-        ((ViewPager) findViewById(R.id.viewPager)).setCurrentItem(page, true);
-    }
-
-    private void checkout() {
-        showProgress(true);
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.DAY_OF_MONTH, calendar.get(Calendar.DAY_OF_MONTH) + 3);
-
-        DirectTapRequest.Builder request = new DirectTapRequest.Builder()
-            .sourceAccount(createAccount())
-            .destinationAccountId(map.get(TransferDetailsFragment.DESTINATION_ACCOUNT_ID))
-            .amount(createAmount(map.get(SourceAccountFragment.COUNTRY),
-                map.get(TransferDetailsFragment.AMOUNT)))
-            .memo(map.get(TransferDetailsFragment.MEMO))
-            .customer(createCustomer(map.get(SourceAccountFragment.FIRST_NAME),
-                map.get(SourceAccountFragment.LAST_NAME), map.get(SourceAccountFragment.EMAIL),
-                map.get(SourceAccountFragment.MOBILE_NUMBER)))
-            .referenceId(map.get(TransferDetailsFragment.REFERENCE_ID))
-            .client(createClient(map.get(ClientDetailsFragment.DISPLAY_NAME),
-                map.get(ClientDetailsFragment.LOGO_URL), map.get(ClientDetailsFragment.RETURN_URL),
-                map.get(ClientDetailsFragment.FAIL_URL)))
-            .dismissalDialog(
-                new DismissalDialog("Do you want to close the application?", "Yes", "No")
-            )
-            .expiryDate(calendar);
-
-        isCheckoutClicked = true;
-
-        DirectTapSDK.INSTANCE.checkout(this, request.build(), new CoreListener<String>() {
-            @Override
-            public void onResult(@Nullable String str, @Nullable CoreError coreError) {
-                if(coreError != null) {
-                    showProgress(false);
-                    showMessage(coreError.getErrorMessage());
-                }
-            }
-        }, REQUEST_CODE, true);
-    }
-
-    private Client createClient(String displayName, String logoUrl, String returnUrl,
-                                String failUrl) {
-        return new Client(displayName, logoUrl, returnUrl, failUrl, false);
-    }
-
-    private Customer createCustomer(String firstName, String lastName, String email,
-                                    String mobileNumber) {
-        return new Customer(firstName, lastName, email, mobileNumber, null);
-    }
-
-    private Account createAccount() {
-        BankCode bankCode = getBankCode(map.get(SourceAccountFragment.BANK_CODE));
-        Country country = getCountry(map.get(SourceAccountFragment.COUNTRY));
-
-        if(bankCode != null)
-            return new Account(bankCode, country);
-        else
-            return new Account(null, country);
-    }
-
-    private Amount createAmount(String country, String amount) {
-        return new Amount(getCurrency(country), ""+((int)(Double.parseDouble(amount) * 100)));
-    }
-
-    private Currency getCurrency(String country) {
-        switch(country) {
-            case "Philippines":
-                return Currency.PHP;
-            case "Indonesia":
-                return Currency.IDR;
-            default:
-                return Currency.UNKNOWN_CURRENCY;
-        }
-    }
-
-    private Country getCountry(String country) {
-        switch(country) {
-            case "Philippines":
-                return Country.PH;
-            case "Indonesia":
-                return Country.ID;
-            default:
-                return Country.UNKNOWN;
-        }
-    }
-
-    private BankCode getBankCode(String bankCode) {
-        switch (bankCode) {
-            case "BDO":
-                return BankCode.BDO_PERSONAL;
-            case "BPI":
-                return BankCode.BPI_PERSONAL;
-            case "MetroBank":
-                return BankCode.METROBANK_PERSONAL;
-            case "PNB":
-                return BankCode.PNB_PERSONAL;
-            case "RCBC":
-                return BankCode.RCBC_PERSONAL;
-            case "Union Bank":
-                return BankCode.UNIONBANK_PERSONAL;
-            case "BCA":
-                return BankCode.BCA_PERSONAL;
-            case "BNI":
-                return BankCode.BNI_PERSONAL;
-            case "BRI":
-                return BankCode.BRI_PERSONAL;
-            case "Mandiri":
-                return BankCode.MANDIRI_PERSONAL;
-        }
-        return BankCode.DUMMY_BANK_PERSONAL;
-    }
-
-    private void addAutoFillListener() {
-        findViewById(R.id.imgLogo).setOnClickListener(v ->
-                getViewPagerFragment(((ViewPager)findViewById(R.id.viewPager))
-                .getCurrentItem()).autoFill());
-    }
-
-    private BaseFragment getViewPagerFragment(int position) {
-        return ((CustomPagerAdapter)((ViewPager)findViewById(R.id.viewPager)).getAdapter())
-                .getItem(position);
-    }
-
-    private void showProgress(boolean isShown) {
-        if (isShown) {
-            findViewById(R.id.progressLayout).setVisibility(View.VISIBLE);
-            rotateAnimation.setDuration(900);
-            rotateAnimation.setRepeatCount(Animation.INFINITE);
-            findViewById(R.id.progress).startAnimation(rotateAnimation);
-        } else {
-            findViewById(R.id.progressLayout).setVisibility(View.GONE);
-            findViewById(R.id.progress).clearAnimation();
-        }
-    }
-
-    private void showMessage(String message) {
-        Snackbar snackbar = Snackbar.make(getWindow().getDecorView().findViewById(
-                android.R.id.content), message, Snackbar.LENGTH_LONG);
-        snackbar.setActionTextColor(Color.WHITE);
-        snackbar.getView().setBackgroundResource(R.color.colorPrimary);
-        ((TextView)snackbar.getView().findViewById(R.id.snackbar_text)).setTextColor(
-                ContextCompat.getColor(this, android.R.color.white));
-        snackbar.show();
-    }
-
-    private void resetFields() {
-        if(isCheckoutClicked) {
-            map.clear();
-            CustomPagerAdapter customPagerAdapter = (CustomPagerAdapter)
-                    ((ViewPager)findViewById(R.id.viewPager)).getAdapter();
-            customPagerAdapter.getFragments().clear();
-            customPagerAdapter.notifyDataSetChanged();
-
-            ((ViewPager)findViewById(R.id.viewPager)).setCurrentItem(SOURCE_ACCOUNT_INFO);
-            ((SourceAccountFragment) getViewPagerFragment(SOURCE_ACCOUNT_INFO)).clearFields();
-        }
-
-        isCheckoutClicked = false;
-    }
-
-    @Override
-    public void onBackPressed() {
-        if(((ViewPager)findViewById(R.id.viewPager)).getCurrentItem() > 0)
-            showPage(((ViewPager)findViewById(R.id.viewPager)).getCurrentItem()- 1);
-        else
-            super.onBackPressed();
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == REQUEST_CODE) {
+        if(requestCode == 3000) {
             if(resultCode == RESULT_OK) {
-                Transaction transaction = ((Reference<Transaction>)
-                        data.getParcelableExtra(DirectTapSDK.TRANSACTION)).getGet();
-                // The status of the transaction should be SUCCESS in order to determine
-                // it is successful. If not, it has been cancelled or failed
-                if(transaction.getStatus() == Status.SUCCESS)
-                    showMessage("Transaction Successful! Here is the transaction id: "+transaction.getId());
-                else
-                    showMessage("Transaction has been cancelled or has failed!");
+                Transaction transaction = data != null ? (Transaction) ((Reference)data.getParcelableExtra(DirectTapSDK.TRANSACTION)).getGet() : null;
+                if (null == transaction) return;
 
-            }
+                AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+                StringBuilder stringBuilder = new StringBuilder();
 
-            else {
-                if(data.getStringExtra(DirectTapSDK.ERROR) != null) {
-                    showMessage(data.getStringExtra(DirectTapSDK.ERROR)+" - "
-                            +data.getStringExtra(DirectTapSDK.ERROR_CODE));
+                stringBuilder.append("TRANSACTION (");
+                stringBuilder.append(null != transaction.getId() ? transaction.getId() : "");
+                stringBuilder.append("):");
+                stringBuilder.append("\n");
+                stringBuilder.append("Reference ID: ");
+                stringBuilder.append(null != transaction.getReferenceId() ? transaction.getReferenceId() : "");
+                stringBuilder.append("\n");
+                stringBuilder.append("Status: ");
+                stringBuilder.append(null != transaction.getStatus() ? transaction.getStatus().name() : "");
+                stringBuilder.append("\n");
+                stringBuilder.append("Status Code: ");
+                stringBuilder.append((null != transaction.getStatusMessage() ? transaction.getStatusMessage() : "") + " (" + (null != transaction.getStatusCode() ? transaction.getStatusCode() : "") + ")");
+                stringBuilder.append("\n");
+                stringBuilder.append("Bank: ");
+                stringBuilder.append((null != transaction.getBankCode() ? transaction.getBankCode().name() : "") + " " + (null != transaction.getCountry() ? transaction.getCountry().name() : ""));
+                stringBuilder.append("\n");
+                if (null != transaction.getAmount() && null != transaction.getAmount().getNumInCents() && !transaction.getAmount().getNumInCents().isEmpty()) {
+                    stringBuilder.append("Amount: ");
+                    stringBuilder.append(transaction.getAmount().getCurrency().name()+ " " + ((float)(
+                            Integer.parseInt(transaction.getAmount().getNumInCents()) / 100)));
+                    stringBuilder.append("\n");
                 }
+                if (null != transaction.getBankFee() && null != transaction.getBankFee().getNumInCents() && !transaction.getBankFee().getNumInCents().isEmpty()) {
+                    stringBuilder.append("Bank Fee: ");
+                    stringBuilder.append(transaction.getBankFee().getCurrency().name() + " " + ((float)(
+                            Integer.parseInt(transaction.getBankFee().getNumInCents()) / 100)));
+                    stringBuilder.append("\n");
+                }
+                stringBuilder.append("Date: ");
+                stringBuilder.append(getDateString(transaction.getFinishedDate()));
+                stringBuilder.append("\n");
+
+                dialogBuilder.setMessage(stringBuilder.toString())
+                        .setCancelable(false)
+                        .setPositiveButton("OK", (dialogInterface, i) -> dialogInterface.dismiss());
+
+                AlertDialog alert = dialogBuilder.create();
+                alert.show();
+            } else {
+                String error = null != data ? data.getStringExtra(DirectTapSDK.ERROR) : "";
+                String errorCode = null != data ? data.getStringExtra(DirectTapSDK.ERROR_CODE) : "";
+                Toast.makeText(this, error + " (" + errorCode + ")", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    private void addSwitchListener() {
-        ((SwitchCompat) findViewById(R.id.switchEnv)).setOnCheckedChangeListener(
-                (buttonView, isChecked) -> TestApplication.getInstance().updateTap(!isChecked));
+    private void updateAPIKey() {
+        apiKey.setText(Constants.API_KEY);
+        destinationAccountId.setText(Constants.DESTINATION_ACCOUNT_ID);
     }
+
+    private void initCountrySpinner() {
+        ArrayAdapter dataAdapter = ArrayAdapter.createFromResource(this, R.array.countries_direct, R.layout.item_spinner);
+        countrySpinner.setAdapter(dataAdapter);
+        countrySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                if (0 == position) country = Country.ID;
+                else country = Country.PH;
+                selectedDestBank = null;
+                initBankSpinner();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+    }
+
+    private void initBankSpinner() {
+        Bank[] bankList = Country.ID == country ? idBanks : phBanks;
+        destBankSpinnerAdapter = new BankSpinnerItemAdapter(this, Arrays.asList(bankList));
+        destinationBankSpinner.setAdapter(destBankSpinnerAdapter);
+        destinationBankSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                if (null == destBankSpinnerAdapter) return;
+                BankSpinnerItemAdapter adapter = destBankSpinnerAdapter;
+                selectedDestBank = (Bank) adapter.getItem(position);
+                BankCode bankCode = ((Bank) adapter.getItem(position)).getBankCode();
+
+                if (BankCode.UNRECOGNIZED == bankCode) {
+                    selectedDestBank = null;
+                    banks.clear();
+                    selectedSourceBank = null;
+                    initSourceBankSpinner();
+                    sourceBankLayout.setVisibility(View.GONE);
+                    return;
+                } else {
+                    sourceBankLayout.setVisibility(View.VISIBLE);
+                }
+
+                DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
+                DirectTapSDK.INSTANCE.getSourceBanks(country, bankCode, (CoreListener<List<Bank>>) (data, error) -> {
+                    if (null == data) {
+                        String message = (null != error && null != error.getErrorMessage()) ? error.getErrorMessage() : "";
+                        Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    banks.clear();
+                    banks.addAll(data);
+                    selectedSourceBank = null;
+                    initSourceBankSpinner();
+                });
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+    }
+
+    private void initSourceBankSpinner() {
+        for (Bank bank: banks) {
+            for (Bank item: idBanks) {
+                if (item.getBankCode() == bank.getBankCode()) item.setLogoUrl(bank.getLogoUrl());
+            }
+            for (Bank item: phBanks) {
+                if (item.getBankCode() == bank.getBankCode()) item.setLogoUrl(bank.getLogoUrl());
+            }
+        }
+
+        if (null != destBankSpinnerAdapter) destBankSpinnerAdapter.notifyDataSetChanged();
+
+        ArrayList<Bank> bankList = new ArrayList();
+        bankList.add(
+                new Bank(BankCode.UNRECOGNIZED, country, "None", "",
+                     new FundTransferLimit(
+                                 Currency.UNKNOWN_CURRENCY,
+                                 fastcheckout.FundTransferLimit.getDefaultInstance()
+                     ),
+                     new FundTransferFee(
+                                 Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()
+                     ), false
+                )
+        );
+        bankList.addAll(banks);
+
+        BankSpinnerItemAdapter dataAdapter = new BankSpinnerItemAdapter(this, bankList);
+        sourceBankSpinner.setAdapter(dataAdapter);
+        sourceBankSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                selectedSourceBank = 0 < position ? banks.get(position - 1) : null;
+                enableCheckout();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+    }
+
+    private void addListeners() {
+        findViewById(R.id.autoFill).setOnClickListener(view -> {
+            updateAPIKey();
+
+            orgName.setText("Organization");
+            successURL.setText("https://google.com");
+            failURL.setText("https://hello.com");
+            firstName.setText("First");
+            lastName.setText("Last");
+            emailAddress.setText("hello@gmail.com");
+            mobileNumber.setText("09123456789");
+            amount.setText("10000");
+            memo.setText("Memo");
+            if(showActionBar.isChecked())
+                actionBarText.setText("Direct Test");
+            referenceID.setText(getDateString(Calendar.getInstance()));
+        });
+
+        if (null != subscriber) subscriber.dispose();
+
+        ArrayList<Observable<CharSequence>> list = new ArrayList();
+        list.add(RxTextView.textChanges(apiKey));
+        list.add(RxTextView.textChanges(firstName));
+        list.add(RxTextView.textChanges(lastName));
+        list.add(RxTextView.textChanges(emailAddress));
+        list.add(RxTextView.textChanges(mobileNumber));
+        list.add(RxTextView.textChanges(destinationAccountId));
+        list.add(RxTextView.textChanges(amount));
+        list.add(RxTextView.textChanges(memo));
+        list.add(RxTextView.textChanges(referenceID));
+        list.add(RxTextView.textChanges(orgName));
+        list.add(RxTextView.textChanges(successURL));
+        list.add(RxTextView.textChanges(failURL));
+
+        subscriber = Observable.combineLatest(list, args -> {
+            for (int i = 0; i < args.length; i ++) {
+                if (TextUtils.isEmpty(args[i].toString().trim())) {
+                    return false;
+                }
+            }
+
+            return true;
+        })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(isEnable -> {
+                    enableCheckout();
+                });
+
+        enableExpiryDate.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            expiryDateLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        enableLogoURL.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            logoURLLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+        });
+
+        showActionBar.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            actionBarText.setEnabled(isChecked);
+        });
+
+        checkout.setOnClickListener(view -> {
+
+            DirectTapRequest.Builder request = new DirectTapRequest.Builder()
+                    .sourceAccount(createAccount())
+                    .destinationAccountId(destinationAccountId.getText().toString())
+                    .amount(createAmount())
+                    .memo(memo.getText().toString())
+                    .customer(
+                            new Customer(firstName.getText().toString(),
+                                             lastName.getText().toString(), emailAddress.getText().toString(),
+                                             mobileNumber.getText().toString(), null)
+                    )
+                    .referenceId(referenceID.getText().toString())
+                    .client(
+                            new Client(orgName.getText().toString(),
+                                    enableLogoURL.isChecked() ? logoURL.getText().toString() : null,
+                                    successURL.getText().toString(), failURL.getText().toString(), false
+                            )
+                     )
+                    .dismissalDialog(
+                            new DismissalDialog("Do you want to close the application?", "Yes", "No")
+                    );
+
+            if(enableExpiryDate.isChecked()) {
+                Calendar cal = Calendar.getInstance();
+                cal.set(Calendar.DAY_OF_MONTH, datePicker.getDayOfMonth());
+                cal.set(Calendar.MONTH, datePicker.getMonth());
+                cal.set(Calendar.YEAR, datePicker.getYear());
+                cal.set(Calendar.HOUR_OF_DAY, timePicker.getHour());
+                cal.set(Calendar.MINUTE, timePicker.getMinute());
+                request.setExpiryDate(cal);
+            }
+
+            DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
+            DirectTapSDK.INSTANCE.checkout(MainActivity.this, request.build(), (CoreListener<String>) (data, error) -> {
+                if (null != error) {
+                    Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
+                }
+            }, 3000, useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null);
+        });
+    }
+
+    private Account createAccount() {
+        if (null != selectedSourceBank) {
+            return new Account(selectedSourceBank.getBankCode(), country);
+        } else {
+            return new Account(null, country);
+        }
+    }
+
+    private Amount createAmount() {
+        return new Amount(getCurrency(), String.valueOf((long)(Double.parseDouble(amount.getText().toString()) * 100)));
+    }
+
+    private Currency getCurrency() {
+        switch (country) {
+            case PH: return Currency.PHP;
+            case ID: return Currency.IDR;
+            default: return Currency.UNKNOWN_CURRENCY;
+        }
+    }
+
+    private void enableCheckout() {
+        checkout.setEnabled(formValidation());
+    }
+
+    private Boolean formValidation() {
+        if (null == apiKey.getText().toString() || apiKey.getText().toString().trim().isEmpty()
+                || null == firstName.getText().toString() || firstName.getText().toString().trim().isEmpty()
+                || null == lastName.getText().toString() || lastName.getText().toString().trim().isEmpty()
+                || null == emailAddress.getText().toString() || emailAddress.getText().toString().trim().isEmpty()
+                || null == mobileNumber.getText().toString() || mobileNumber.getText().toString().trim().isEmpty()
+                || null == destinationAccountId.getText().toString() || destinationAccountId.getText().toString().trim().isEmpty()
+                || null == amount.getText().toString() || amount.getText().toString().trim().isEmpty()
+                || null == memo.getText().toString() || memo.getText().toString().trim().isEmpty()
+                || null == referenceID.getText().toString() || referenceID.getText().toString().trim().isEmpty()
+                || null == successURL.getText().toString() || successURL.getText().toString().trim().isEmpty()
+                || null == failURL.getText().toString() || failURL.getText().toString().trim().isEmpty()
+                || null == orgName.getText().toString() || orgName.getText().toString().trim().isEmpty()) {
+                return false;
+        }
+
+        String emailAddress = this.emailAddress.getText().toString();
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(emailAddress).matches())
+            return false;
+
+        String mobileNumber = this.mobileNumber.getText().toString();
+        if (!mobileNumber.startsWith("09") || 11 != mobileNumber.length())
+            return false;
+
+        String successURL = this.successURL.getText().toString();
+        if (!successURL.startsWith("http://") && !successURL.startsWith("https://") && !successURL.startsWith("www."))
+            return false;
+
+        String failURL = this.failURL.getText().toString();
+        if (!failURL.startsWith("http://") && !failURL.startsWith("https://") && !failURL.startsWith("www."))
+            return false;
+
+        Double amount = 0.0;
+        try {
+            amount = Double.parseDouble(this.amount.getText().toString());
+        } catch (Exception e) {
+        }
+
+        amount *= 100.0;
+
+        if (0.0 == amount)
+            return false;
+
+        if(selectedSourceBank == null)
+            return true;
+
+        if (null == selectedDestBank) return false;
+        if (null == selectedSourceBank) return false;
+
+        Double min = 0.0;
+        if (selectedDestBank.getBankCode() == selectedSourceBank.getBankCode()) {
+            try {
+                min = Double.parseDouble(selectedSourceBank.getFundTransferLimit().getIntrabankMinLimit().getNumInCents());
+            } catch (Exception e) { }
+        } else {
+            try {
+                min = Double.parseDouble(selectedSourceBank.getFundTransferLimit().getInterbankMinLimit().getNumInCents());
+            } catch (Exception e) { }
+        }
+
+        Double max = 0.0;
+        if (selectedDestBank.getBankCode() == selectedSourceBank.getBankCode()) {
+            try {
+                max = Double.parseDouble(selectedSourceBank.getFundTransferLimit().getIntrabankMaxLimit().getNumInCents());
+            } catch (Exception e) { }
+        } else {
+            try {
+                max = Double.parseDouble(selectedSourceBank.getFundTransferLimit().getInterbankMaxLimit().getNumInCents());
+            } catch (Exception e) { }
+        }
+
+        if (amount < min || amount > max)
+            return false;
+
+        return true;
+    }
+
+    private String getDateString(Calendar calendar) {
+        if (null == calendar) return "";
+
+        SimpleDateFormat format = new SimpleDateFormat("MMMM d yyyy hh:mm:ss", Locale.getDefault());
+        return format.format(calendar.getTimeInMillis());
+    }
+
 }
