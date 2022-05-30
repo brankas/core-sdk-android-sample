@@ -7,4 +7,9 @@
         <item name="colorAccent">@color/colorPrimary</item>
     </style>
 
+    <style name="NormalTextStyle" parent="Widget.AppCompat.TextView">
+        <item name="fontFamily">@font/ubuntu_regular</item>
+        <item name="android:fontFamily">@font/ubuntu_regular</item>
+    </style>
+
 </resources>
