@@ -14,6 +14,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.appcompat.widget.AppCompatSpinner;
 import androidx.appcompat.widget.AppCompatTextView;
@@ -60,7 +61,7 @@ import tap.request.statement.StatementTapRequest;
  * Email: ejay.torres@brank.as
  */
 
-public class MainActivity extends FragmentActivity {
+public class MainActivity extends AppCompatActivity {
 
     private NestedScrollView scrollView;
     private SwitchCompat useRememberMe;
@@ -121,6 +122,8 @@ public class MainActivity extends FragmentActivity {
         initCountrySpinner();
         initDates();
         addListeners();
+
+        StatementTapSDK.INSTANCE.initDownload(this);
     }
 
     @Override
