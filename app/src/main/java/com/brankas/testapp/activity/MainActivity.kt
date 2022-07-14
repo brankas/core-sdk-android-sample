@@ -9,6 +9,7 @@ import android.os.Looper
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatSpinner
 import androidx.appcompat.widget.AppCompatTextView
@@ -43,7 +44,7 @@ import java.util.*
  * Email: ejay.torres@brank.as
  */
 
-class MainActivity : FragmentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var scrollView: NestedScrollView
     private lateinit var useRememberMe: SwitchCompat
@@ -103,6 +104,8 @@ class MainActivity : FragmentActivity() {
         initCountrySpinner()
         initDates()
         addListeners()
+
+        StatementTapSDK.initDownload(this)
     }
 
     override fun onDestroy() {
