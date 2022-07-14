@@ -1,8 +1,6 @@
 package com.brankas.testapp.adapter;
 
 import android.content.Context;
-import android.graphics.drawable.PictureDrawable;
-import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,17 +11,9 @@ import androidx.appcompat.widget.AppCompatCheckBox;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.brankas.testapp.R;
-import com.brankas.testapp.custom.SvgDecoder;
-import com.brankas.testapp.custom.SvgDrawableTranscoder;
-import com.brankas.testapp.custom.SvgSoftwareLayerSetter;
 import com.brankas.testapp.model.BalanceBankItemViewModel;
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.model.StreamEncoder;
-import com.bumptech.glide.load.resource.file.FileToStreamDecoder;
-import com.caverock.androidsvg.SVG;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,26 +57,10 @@ public class BalanceBanksAdapter extends RecyclerView.Adapter {
                 item.setSelected(!item.getSelected());
             });
 
-            if (item.getBank().getLogoUrl().endsWith(".svg")) {
-                Glide.with(context)
-                        .using(Glide.buildStreamModelLoader(Uri.class, context), InputStream.class)
-                        .from(Uri.class)
-                        .as(SVG.class)
-                        .transcode(new SvgDrawableTranscoder(), PictureDrawable.class)
-                        .sourceEncoder(new StreamEncoder())
-                        .cacheDecoder(new FileToStreamDecoder(new SvgDecoder()))
-                        .decoder(new SvgDecoder())
-                        .placeholder(R.drawable.ic_banking)
-                        .listener(new SvgSoftwareLayerSetter())
-                        .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                        .load(Uri.parse(item.getBank().getLogoUrl()))
-                        .into(viewHolder.imageView);
-            } else {
-                Glide.with(context)
-                        .load(item.getBank().getLogoUrl())
-                        .placeholder(R.drawable.ic_banking)
-                        .into(viewHolder.imageView);
-            }
+            Glide.with(context)
+                    .load(item.getBank().getPngLogoUrl())
+                    .placeholder(R.drawable.ic_banking)
+                    .into(viewHolder.imageView);
 
         } catch (Exception e) {}
     }
@@ -110,7 +84,7 @@ public class BalanceBanksAdapter extends RecyclerView.Adapter {
             super(itemView);
 
             checkbox = itemView.findViewById(R.id.checkbox);
-            imageView = itemView.findViewById(R.id.image);
+            imageView = itemView.findViewById(R.id.imageView);
         }
     }
 }
