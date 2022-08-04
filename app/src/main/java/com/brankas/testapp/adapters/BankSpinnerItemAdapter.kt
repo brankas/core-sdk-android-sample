@@ -1,8 +1,6 @@
 package com.brankas.testapp.adapters
 
 import android.content.Context
-import android.graphics.drawable.PictureDrawable
-import android.net.Uri
 import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
@@ -11,16 +9,8 @@ import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
 import com.brankas.testapp.R
-import com.brankas.testapp.custom.SvgDecoder
-import com.brankas.testapp.custom.SvgDrawableTranscoder
-import com.brankas.testapp.custom.SvgSoftwareLayerSetter
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.model.StreamEncoder
-import com.bumptech.glide.load.resource.file.FileToStreamDecoder
-import com.caverock.androidsvg.SVG
 import tap.model.direct.Bank
-import java.io.InputStream
 
 class BankSpinnerItemAdapter(private val context: Context, private val items: List<Bank>) : BaseAdapter() {
 
@@ -58,27 +48,10 @@ class BankSpinnerItemAdapter(private val context: Context, private val items: Li
         }
 
         textView.text = item.title
-        if (item.logoUrl.endsWith(".svg")) {
-            Glide.with(context)
-                .using(Glide.buildStreamModelLoader(Uri::class.java, context), InputStream::class.java)
-                .from(Uri::class.java)
-                .`as`(SVG::class.java)
-                .transcode(SvgDrawableTranscoder(), PictureDrawable::class.java)
-                .sourceEncoder(StreamEncoder())
-                .cacheDecoder(FileToStreamDecoder(SvgDecoder()))
-                .decoder(SvgDecoder())
-                .placeholder(R.drawable.ic_banking)
-                .listener(SvgSoftwareLayerSetter<Uri>())
-                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                .load(Uri.parse(item.logoUrl))
-                .into(image)
-        } else {
-            Glide.with(context)
-                .load(item.logoUrl)
-                .placeholder(R.drawable.ic_banking)
-                .into(image)
-        }
-
+        Glide.with(context)
+            .load(item.logoUrl)
+            .placeholder(R.drawable.ic_banking)
+            .into(image)
         return convertView!!
     }
 

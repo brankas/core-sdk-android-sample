@@ -6,4 +6,14 @@
         <item>Philippines</item>
     </string-array>
 
+    <string-array name="menu_items">
+        <item>Checkout</item>
+        <item>Search</item>
+    </string-array>
+
+    <string-array name="searchByTransaction">
+        <item>Transaction ID</item>
+        <item>Reference ID</item>
+    </string-array>
+
 </resources>

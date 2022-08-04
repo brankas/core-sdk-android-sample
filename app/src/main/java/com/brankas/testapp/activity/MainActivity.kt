@@ -4,20 +4,15 @@ import `as`.brank.sdk.core.CoreError
 import `as`.brank.sdk.core.CoreListener
 import `as`.brank.sdk.tap.direct.DirectTapSDK
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.os.Looper
 import android.view.View
 import android.widget.*
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatSpinner
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.SwitchCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.brankas.testapp.Constants
 import com.brankas.testapp.R
 import com.brankas.testapp.adapters.BankSpinnerItemAdapter
@@ -34,7 +29,6 @@ import tap.model.direct.*
 import tap.request.direct.DirectTapRequest
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 /**
  * Author: Ejay Torres
@@ -42,7 +36,7 @@ import kotlin.collections.ArrayList
  */
 
 class MainActivity : FragmentActivity() {
-
+    // Checkout
     private lateinit var useRememberMe: SwitchCompat
     private lateinit var showActionBar: SwitchCompat
     private lateinit var actionBarText: TextInputEditText
@@ -72,14 +66,24 @@ class MainActivity : FragmentActivity() {
     private lateinit var timePicker: TimePicker
     private lateinit var checkout: AppCompatButton
 
+    //Search
+    private lateinit var menuSpinner: AppCompatSpinner
+    private lateinit var search: AppCompatButton
+    private lateinit var retrieve: AppCompatButton
+    private lateinit var apiKeySearch: TextInputEditText
+    private lateinit var query: TextInputEditText
+    private lateinit var searchBySpinner: AppCompatSpinner
 
     private var country = Country.PH
     private var banks = ArrayList<Bank>()
     private var selectedDestBank: Bank? = null
     private var selectedSourceBank: Bank? = null
+    private var searchBy = 0
 
     private var subscriber: Disposable? = null
     private var destBankSpinnerAdapter: BankSpinnerItemAdapter? = null
+
+    private var searchSubscriber: Disposable? = null
 
     private var idBanks = arrayListOf(
         Bank(
@@ -169,6 +173,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        //Checkout
         useRememberMe = findViewById(R.id.useRememberMe)
         showActionBar = findViewById(R.id.showActionBar)
         actionBarText = findViewById(R.id.action_bar_text)
@@ -198,10 +203,26 @@ class MainActivity : FragmentActivity() {
         timePicker = findViewById(R.id.timePicker)
         checkout = findViewById(R.id.checkout)
 
+        menuSpinner = findViewById(R.id.menuSpinner)
+
+        //Search
+        search = findViewById(R.id.search)
+        retrieve = findViewById(R.id.retrieve)
+        apiKeySearch = findViewById(R.id.apiKeySearch)
+        query = findViewById(R.id.query)
+        searchBySpinner = findViewById(R.id.searchBySpinner)
+
+        search.isEnabled = false
         checkout.isEnabled = false
+
+        initSearchBySpinner()
+
         updateAPIKey()
         initCountrySpinner()
+        initMenuSpinner()
         addListeners()
+
+        addSearchListeners()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -210,50 +231,7 @@ class MainActivity : FragmentActivity() {
             if(resultCode == RESULT_OK) {
                 val transaction = data?.getParcelableExtra<Reference<Transaction>>(
                     DirectTapSDK.TRANSACTION)!!.get!!
-
-                val dialogBuilder = AlertDialog.Builder(this)
-                val stringBuilder = StringBuilder()
-
-                stringBuilder.append("TRANSACTION (")
-                stringBuilder.append(transaction.id)
-                stringBuilder.append("):")
-                stringBuilder.appendLine()
-                stringBuilder.append("Reference ID: ")
-                stringBuilder.append(transaction.referenceId)
-                stringBuilder.appendLine()
-                stringBuilder.append("Status: ")
-                stringBuilder.append(transaction.status.name)
-                stringBuilder.appendLine()
-                stringBuilder.append("Status Code: ")
-                stringBuilder.append(transaction.statusMessage.orEmpty()+" ("+transaction.statusCode+")")
-                stringBuilder.appendLine()
-                stringBuilder.append("Bank: ")
-                stringBuilder.append(transaction.bankCode.name+" "+transaction.country.name)
-                stringBuilder.appendLine()
-                if(transaction.amount.numInCents.isNotEmpty()) {
-                    stringBuilder.append("Amount: ")
-                    stringBuilder.append(transaction.amount.currency.name + " " + ((
-                            transaction.amount.numInCents.toInt() / 100).toFloat()))
-                    stringBuilder.appendLine()
-                }
-                if(transaction.bankFee.numInCents.isNotEmpty()) {
-                    stringBuilder.append("Bank Fee: ")
-                    stringBuilder.append(transaction.bankFee.currency.name + " " + ((
-                            transaction.bankFee.numInCents.toInt() / 100).toFloat()))
-                    stringBuilder.appendLine()
-                }
-                stringBuilder.append("Date: ")
-                stringBuilder.append(transaction.finishedDate.getDateString())
-                stringBuilder.appendLine()
-
-                dialogBuilder.setMessage(stringBuilder.toString())
-                    .setCancelable(false)
-                    .setPositiveButton("OK") { dialogInterface, _ ->
-                        dialogInterface.dismiss()
-                    }
-
-                val alert = dialogBuilder.create()
-                alert.show()
+                showTransaction(transaction)
             } else {
                 val error = data?.getStringExtra(DirectTapSDK.ERROR)
                 val errorCode = data?.getStringExtra(DirectTapSDK.ERROR_CODE)
@@ -266,6 +244,42 @@ class MainActivity : FragmentActivity() {
     private fun updateAPIKey() {
         apiKey.setText(Constants.API_KEY)
         destinationAccountId.setText(Constants.DESTINATION_ACCOUNT_ID)
+    }
+
+    private fun initSearchBySpinner() {
+        val dataAdapter = ArrayAdapter.createFromResource(this, R.array.searchByTransaction,
+            R.layout.item_spinner)
+        searchBySpinner.adapter = dataAdapter
+        searchBySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int,
+                                        id: Long) {
+                query.hint = dataAdapter.getItem(position)
+                searchBy = position
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+            }
+        }
+        searchBySpinner.setSelection(0)
+    }
+
+    private fun initMenuSpinner() {
+        val dataAdapter = ArrayAdapter.createFromResource(this, R.array.menu_items,
+            R.layout.item_spinner)
+        menuSpinner.adapter = dataAdapter
+        menuSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int,
+                                        id: Long) {
+                findViewById<LinearLayout>(R.id.checkoutLayout).isVisible = position == 0
+                findViewById<LinearLayout>(R.id.searchLayout).isVisible = position == 1
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+            }
+        }
+        menuSpinner.setSelection(0)
     }
 
     private fun initCountrySpinner() {
@@ -369,6 +383,46 @@ class MainActivity : FragmentActivity() {
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
 
+            }
+        }
+    }
+
+    private fun addSearchListeners() {
+        apiKeySearch.setText(Constants.API_KEY)
+
+        searchSubscriber?.let { it.dispose() }
+
+        searchSubscriber = Observables.combineLatest(apiKeySearch.textChanges(),
+            query.textChanges()).subscribe {
+            enableSearch()
+        }
+
+        retrieve.setOnClickListener {
+            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false)
+            DirectTapSDK.getLastTransaction(object : CoreListener<Transaction?> {
+                override fun onResult(data: Transaction?, error: CoreError?) {
+                    showTransaction(data, error)
+                }
+            })
+        }
+
+        search.setOnClickListener {
+            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false)
+            if (searchBy == 0) {
+                DirectTapSDK.getTransactionById(query.text?.toString().orEmpty(),
+                    object : CoreListener<Transaction?> {
+                        override fun onResult(data: Transaction?, error: CoreError?) {
+                            showTransaction(data, error)
+                        }
+                    })
+            } else {
+                DirectTapSDK.getTransactionByReferenceId(query.text?.toString()
+                    .orEmpty(),
+                    object : CoreListener<Transaction?> {
+                        override fun onResult(data: Transaction?, error: CoreError?) {
+                            showTransaction(data, error)
+                        }
+                    })
             }
         }
     }
@@ -482,6 +536,10 @@ class MainActivity : FragmentActivity() {
         checkout.isEnabled = formValidation()
     }
 
+    private fun enableSearch() {
+        search.isEnabled = apiKeySearch.text!!.isNotEmpty() && query.text!!.isNotEmpty()
+    }
+
     private fun formValidation() : Boolean {
         if (apiKey.text.isNullOrBlank() || firstName.text.isNullOrBlank()
             || lastName.text.isNullOrBlank() || emailAddress.text.isNullOrBlank()
@@ -539,6 +597,61 @@ class MainActivity : FragmentActivity() {
     fun Calendar.getDateString() : String {
         val format = SimpleDateFormat("MMMM d yyyy hh:mm:ss", Locale.getDefault())
         return format.format(timeInMillis)
+    }
+
+    private fun showTransaction(data: Transaction?, error: CoreError?) {
+        data?.let {
+            showTransaction(data)
+        } ?: run {
+            Toast.makeText(this@MainActivity, "${error?.errorMessage} " +
+                    "(${error?.errorCode?.getCode()})", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showTransaction(transaction: Transaction) {
+        val dialogBuilder = AlertDialog.Builder(this)
+        val stringBuilder = StringBuilder()
+
+        stringBuilder.append("TRANSACTION (")
+        stringBuilder.append(transaction.id)
+        stringBuilder.append("):")
+        stringBuilder.appendLine()
+        stringBuilder.append("Reference ID: ")
+        stringBuilder.append(transaction.referenceId)
+        stringBuilder.appendLine()
+        stringBuilder.append("Status: ")
+        stringBuilder.append(transaction.status.name)
+        stringBuilder.appendLine()
+        stringBuilder.append("Status Code: ")
+        stringBuilder.append(transaction.statusMessage.orEmpty()+" ("+transaction.statusCode+")")
+        stringBuilder.appendLine()
+        stringBuilder.append("Bank: ")
+        stringBuilder.append(transaction.bankCode.name+" "+transaction.country.name)
+        stringBuilder.appendLine()
+        if(transaction.amount.numInCents.isNotEmpty()) {
+            stringBuilder.append("Amount: ")
+            stringBuilder.append(transaction.amount.currency.name + " " + ((
+                    transaction.amount.numInCents.toInt() / 100).toFloat()))
+            stringBuilder.appendLine()
+        }
+        if(transaction.bankFee.numInCents.isNotEmpty()) {
+            stringBuilder.append("Bank Fee: ")
+            stringBuilder.append(transaction.bankFee.currency.name + " " + ((
+                    transaction.bankFee.numInCents.toInt() / 100).toFloat()))
+            stringBuilder.appendLine()
+        }
+        stringBuilder.append("Date: ")
+        stringBuilder.append(transaction.finishedDate.getDateString())
+        stringBuilder.appendLine()
+
+        dialogBuilder.setMessage(stringBuilder.toString())
+            .setCancelable(false)
+            .setPositiveButton("OK") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+            }
+
+        val alert = dialogBuilder.create()
+        alert.show()
     }
 
 }
