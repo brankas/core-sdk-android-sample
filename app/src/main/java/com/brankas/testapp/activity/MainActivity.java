@@ -33,6 +33,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+import as.brank.sdk.core.CoreError;
 import as.brank.sdk.core.CoreListener;
 import as.brank.sdk.tap.direct.DirectTapSDK;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -60,6 +61,7 @@ import tap.request.direct.DirectTapRequest;
 
 public class MainActivity extends FragmentActivity {
 
+    //Checkout
     private SwitchCompat useRememberMe;
     private SwitchCompat showActionBar;
     private TextInputEditText actionBarText;
@@ -89,12 +91,22 @@ public class MainActivity extends FragmentActivity {
     private TimePicker timePicker;
     private AppCompatButton checkout;
 
+    //Search
+    private AppCompatSpinner menuSpinner;
+    private AppCompatButton search;
+    private AppCompatButton retrieve;
+    private TextInputEditText apiKeySearch;
+    private TextInputEditText query;
+    private AppCompatSpinner searchBySpinner;
+
     private Country country = Country.PH;
     private ArrayList<Bank> banks = new ArrayList();
     private Bank selectedDestBank;
     private Bank selectedSourceBank;
+    private int searchBy = 0;
 
     private Disposable subscriber;
+    private Disposable searchSubscriber;
     private BankSpinnerItemAdapter destBankSpinnerAdapter;
 
     private Bank[] idBanks = {
@@ -151,6 +163,7 @@ public class MainActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //Checkout
         useRememberMe = findViewById(R.id.useRememberMe);
         showActionBar = findViewById(R.id.showActionBar);
         actionBarText = findViewById(R.id.action_bar_text);
@@ -180,10 +193,25 @@ public class MainActivity extends FragmentActivity {
         timePicker = findViewById(R.id.timePicker);
         checkout = findViewById(R.id.checkout);
 
+        menuSpinner = findViewById(R.id.menuSpinner);
+
+        //Search
+        search = findViewById(R.id.search);
+        retrieve = findViewById(R.id.retrieve);
+        apiKeySearch = findViewById(R.id.apiKeySearch);
+        query = findViewById(R.id.query);
+        searchBySpinner = findViewById(R.id.searchBySpinner);
+
+        search.setEnabled(false);
         checkout.setEnabled(false);
+
+        initSearchBySpinner();
+
         updateAPIKey();
         initCountrySpinner();
+        initMenuSpinner();
         addListeners();
+        addSearchListeners();
     }
 
 
@@ -194,48 +222,7 @@ public class MainActivity extends FragmentActivity {
             if(resultCode == RESULT_OK) {
                 Transaction transaction = data != null ? (Transaction) ((Reference)data.getParcelableExtra(DirectTapSDK.TRANSACTION)).getGet() : null;
                 if (null == transaction) return;
-
-                AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
-                StringBuilder stringBuilder = new StringBuilder();
-
-                stringBuilder.append("TRANSACTION (");
-                stringBuilder.append(null != transaction.getId() ? transaction.getId() : "");
-                stringBuilder.append("):");
-                stringBuilder.append("\n");
-                stringBuilder.append("Reference ID: ");
-                stringBuilder.append(null != transaction.getReferenceId() ? transaction.getReferenceId() : "");
-                stringBuilder.append("\n");
-                stringBuilder.append("Status: ");
-                stringBuilder.append(null != transaction.getStatus() ? transaction.getStatus().name() : "");
-                stringBuilder.append("\n");
-                stringBuilder.append("Status Code: ");
-                stringBuilder.append((null != transaction.getStatusMessage() ? transaction.getStatusMessage() : "") + " (" + (null != transaction.getStatusCode() ? transaction.getStatusCode() : "") + ")");
-                stringBuilder.append("\n");
-                stringBuilder.append("Bank: ");
-                stringBuilder.append((null != transaction.getBankCode() ? transaction.getBankCode().name() : "") + " " + (null != transaction.getCountry() ? transaction.getCountry().name() : ""));
-                stringBuilder.append("\n");
-                if (null != transaction.getAmount() && null != transaction.getAmount().getNumInCents() && !transaction.getAmount().getNumInCents().isEmpty()) {
-                    stringBuilder.append("Amount: ");
-                    stringBuilder.append(transaction.getAmount().getCurrency().name()+ " " + ((float)(
-                            Integer.parseInt(transaction.getAmount().getNumInCents()) / 100)));
-                    stringBuilder.append("\n");
-                }
-                if (null != transaction.getBankFee() && null != transaction.getBankFee().getNumInCents() && !transaction.getBankFee().getNumInCents().isEmpty()) {
-                    stringBuilder.append("Bank Fee: ");
-                    stringBuilder.append(transaction.getBankFee().getCurrency().name() + " " + ((float)(
-                            Integer.parseInt(transaction.getBankFee().getNumInCents()) / 100)));
-                    stringBuilder.append("\n");
-                }
-                stringBuilder.append("Date: ");
-                stringBuilder.append(getDateString(transaction.getFinishedDate()));
-                stringBuilder.append("\n");
-
-                dialogBuilder.setMessage(stringBuilder.toString())
-                        .setCancelable(false)
-                        .setPositiveButton("OK", (dialogInterface, i) -> dialogInterface.dismiss());
-
-                AlertDialog alert = dialogBuilder.create();
-                alert.show();
+                showTransaction(transaction);
             } else {
                 String error = null != data ? data.getStringExtra(DirectTapSDK.ERROR) : "";
                 String errorCode = null != data ? data.getStringExtra(DirectTapSDK.ERROR_CODE) : "";
@@ -247,6 +234,46 @@ public class MainActivity extends FragmentActivity {
     private void updateAPIKey() {
         apiKey.setText(Constants.API_KEY);
         destinationAccountId.setText(Constants.DESTINATION_ACCOUNT_ID);
+    }
+
+    private void initSearchBySpinner() {
+        ArrayAdapter dataAdapter = ArrayAdapter.createFromResource(this, R.array.searchByTransaction,
+                R.layout.item_spinner);
+        searchBySpinner.setAdapter(dataAdapter);
+
+        searchBySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                query.setHint(dataAdapter.getItem(position).toString());
+                searchBy = position;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+        searchBySpinner.setSelection(0);
+    }
+
+    private void initMenuSpinner() {
+        ArrayAdapter dataAdapter = ArrayAdapter.createFromResource(this, R.array.menu_items,
+                R.layout.item_spinner);
+        menuSpinner.setAdapter(dataAdapter);
+
+        menuSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                findViewById(R.id.checkoutLayout).setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+                findViewById(R.id.searchLayout).setVisibility(position == 1 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+        menuSpinner.setSelection(0);
     }
 
     private void initCountrySpinner() {
@@ -352,6 +379,53 @@ public class MainActivity extends FragmentActivity {
             public void onNothingSelected(AdapterView<?> adapterView) {
 
             }
+        });
+    }
+
+    private void addSearchListeners() {
+        apiKeySearch.setText(Constants.API_KEY);
+
+        if(searchSubscriber != null)
+            searchSubscriber.dispose();
+
+        ArrayList<Observable<CharSequence>> list = new ArrayList();
+        list.add(RxTextView.textChanges(apiKeySearch));
+        list.add(RxTextView.textChanges(query));
+
+        searchSubscriber = Observable.combineLatest(list, args -> {
+            for (int i = 0; i < args.length; i ++) {
+                if (TextUtils.isEmpty(args[i].toString().trim())) {
+                    return false;
+                }
+            }
+
+            return true;
+        })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(isEnable -> {
+                    enableSearch();
+                });
+
+
+        retrieve.setOnClickListener(view -> {
+            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false);
+            DirectTapSDK.INSTANCE.getLastTransaction((CoreListener<Transaction>) (transaction, coreError) -> {
+                showTransaction(transaction, coreError);
+            });
+        });
+
+        search.setOnClickListener(view -> {
+            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false);
+            if(searchBy == 0)
+                DirectTapSDK.INSTANCE.getTransactionById(query.getText().toString(),
+                    (CoreListener<Transaction>) (transaction, coreError) -> {
+                    showTransaction(transaction, coreError);
+                });
+            else
+                DirectTapSDK.INSTANCE.getTransactionByReferenceId(query.getText().toString(),
+                        (CoreListener<Transaction>) (transaction, coreError) -> {
+                    showTransaction(transaction, coreError);
+                });
         });
     }
 
@@ -481,6 +555,11 @@ public class MainActivity extends FragmentActivity {
         checkout.setEnabled(formValidation());
     }
 
+    private void enableSearch() {
+        search.setEnabled(!apiKeySearch.getText().toString().trim().isEmpty() &&
+                !query.getText().toString().trim().isEmpty());
+    }
+
     private Boolean formValidation() {
         if (null == apiKey.getText().toString() || apiKey.getText().toString().trim().isEmpty()
                 || null == firstName.getText().toString() || firstName.getText().toString().trim().isEmpty()
@@ -563,6 +642,58 @@ public class MainActivity extends FragmentActivity {
 
         SimpleDateFormat format = new SimpleDateFormat("MMMM d yyyy hh:mm:ss", Locale.getDefault());
         return format.format(calendar.getTimeInMillis());
+    }
+
+    private void showTransaction(Transaction data, CoreError error) {
+        if(data != null)
+            showTransaction(data);
+        else
+            Toast.makeText(this, error.getErrorMessage() + "("
+                    + error.getErrorCode().getCode(), Toast.LENGTH_LONG).show();
+    }
+
+    private void showTransaction(Transaction transaction) {
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append("TRANSACTION (");
+        stringBuilder.append(null != transaction.getId() ? transaction.getId() : "");
+        stringBuilder.append("):");
+        stringBuilder.append("\n");
+        stringBuilder.append("Reference ID: ");
+        stringBuilder.append(null != transaction.getReferenceId() ? transaction.getReferenceId() : "");
+        stringBuilder.append("\n");
+        stringBuilder.append("Status: ");
+        stringBuilder.append(null != transaction.getStatus() ? transaction.getStatus().name() : "");
+        stringBuilder.append("\n");
+        stringBuilder.append("Status Code: ");
+        stringBuilder.append((null != transaction.getStatusMessage() ? transaction.getStatusMessage() : "") + " (" + (null != transaction.getStatusCode() ? transaction.getStatusCode() : "") + ")");
+        stringBuilder.append("\n");
+        stringBuilder.append("Bank: ");
+        stringBuilder.append((null != transaction.getBankCode() ? transaction.getBankCode().name() : "") + " " + (null != transaction.getCountry() ? transaction.getCountry().name() : ""));
+        stringBuilder.append("\n");
+        if (null != transaction.getAmount() && null != transaction.getAmount().getNumInCents() && !transaction.getAmount().getNumInCents().isEmpty()) {
+            stringBuilder.append("Amount: ");
+            stringBuilder.append(transaction.getAmount().getCurrency().name()+ " " + ((float)(
+                    Integer.parseInt(transaction.getAmount().getNumInCents()) / 100)));
+            stringBuilder.append("\n");
+        }
+        if (null != transaction.getBankFee() && null != transaction.getBankFee().getNumInCents() && !transaction.getBankFee().getNumInCents().isEmpty()) {
+            stringBuilder.append("Bank Fee: ");
+            stringBuilder.append(transaction.getBankFee().getCurrency().name() + " " + ((float)(
+                    Integer.parseInt(transaction.getBankFee().getNumInCents()) / 100)));
+            stringBuilder.append("\n");
+        }
+        stringBuilder.append("Date: ");
+        stringBuilder.append(getDateString(transaction.getFinishedDate()));
+        stringBuilder.append("\n");
+
+        dialogBuilder.setMessage(stringBuilder.toString())
+                .setCancelable(false)
+                .setPositiveButton("OK", (dialogInterface, i) -> dialogInterface.dismiss());
+
+        AlertDialog alert = dialogBuilder.create();
+        alert.show();
     }
 
 }

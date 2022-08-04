@@ -25,4 +25,8 @@
     <string name="expiry_date">Expiry Date</string>
     <string name="action_bar_text">Action Bar Text</string>
     <string name="bank_logo">Bank Logo</string>
+    <string name="menu_selection">Menu Selection</string>
+    <string name="search_by">Search By</string>
+    <string name="search">Search</string>
+    <string name="retrieve_last_transaction">Retrieve Last Transaction</string>
 </resources>
