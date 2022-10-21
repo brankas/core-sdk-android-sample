@@ -331,7 +331,7 @@ class MainActivity : FragmentActivity() {
                     override fun onResult(data: List<Bank>?, error: CoreError?) {
                         data?.let { bankList ->
                             banks.clear()
-                            banks.addAll(bankList)
+                            banks.addAll(bankList.filter { it.isEnabled })
                             selectedSourceBank = null
                             initSourceBankSpinner()
                         } ?: run {
