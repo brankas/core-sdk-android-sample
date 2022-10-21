@@ -117,7 +117,7 @@ public class MainActivity extends FragmentActivity {
                     ),
                     new FundTransferFee(
                         Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()
-                    ), false
+                    ), false, true
             ),
             new Bank(BankCode.BCA_PERSONAL, Country.ID, "BCA", "",
                     new FundTransferLimit(
@@ -127,35 +127,35 @@ public class MainActivity extends FragmentActivity {
                     new FundTransferFee(
                         Currency.UNKNOWN_CURRENCY,
                         fastcheckout.FundTransferFee.getDefaultInstance()
-                    ), false
+                    ), false, true
             ),
             new Bank(BankCode.BNI_PERSONAL, Country.ID, "BNI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
             new Bank(BankCode.BRI_PERSONAL, Country.ID, "BRI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
             new Bank(BankCode.MANDIRI_PERSONAL, Country.ID, "Mandiri", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false)
+                    Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true)
     };
 
     private Bank[] phBanks = {
         new Bank(BankCode.UNRECOGNIZED, Country.PH, "None", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.BDO_PERSONAL, Country.PH, "BDO", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.BPI_PERSONAL, Country.PH, "BPI", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.EASTWEST_PERSONAL, Country.PH, "EastWest Bank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.LANDBANK_PERSONAL, Country.PH, "LandBank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.METROBANK_PERSONAL, Country.PH, "MetroBank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.PNB_PERSONAL, Country.PH, "PNB", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.RCBC_PERSONAL, Country.PH, "RCBC", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false),
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true),
         new Bank(BankCode.UNIONBANK_PERSONAL, Country.PH, "Union Bank", "", new FundTransferLimit(Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferLimit.getDefaultInstance()), new FundTransferFee(
-                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false)
+                Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()), false, true)
     };
 
     @Override
@@ -327,7 +327,11 @@ public class MainActivity extends FragmentActivity {
                     }
 
                     banks.clear();
-                    banks.addAll(data);
+                    for(Bank bank: data) {
+                        if(bank.isEnabled())
+                            banks.add(bank);
+                    }
+
                     selectedSourceBank = null;
                     initSourceBankSpinner();
                 });
@@ -361,7 +365,7 @@ public class MainActivity extends FragmentActivity {
                      ),
                      new FundTransferFee(
                                  Currency.UNKNOWN_CURRENCY, fastcheckout.FundTransferFee.getDefaultInstance()
-                     ), false
+                     ), false, true
                 )
         );
         bankList.addAll(banks);
