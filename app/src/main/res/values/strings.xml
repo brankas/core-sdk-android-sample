@@ -22,4 +22,6 @@
     <string name="personal">Personal</string>
     <string name="corporate">Corporate</string>
     <string name="bank_logo">Bank Logo</string>
+    <string name="enable_logging">Enable Logging</string>
+    <string name="retrieve_balance">Retrieve Balance</string>
 </resources>

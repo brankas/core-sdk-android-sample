@@ -53,6 +53,29 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
+                    android:text="@string/enable_logging"
+                    android:textColor="@android:color/black"
+                    android:textSize="@dimen/sp_16"
+                    style="@style/NormalTextStyle"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/enableLogging"
+                    android:checked="true"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true" />
+            </RelativeLayout>
+
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_10">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
                     android:text="@string/use_remember_me"
                     android:textColor="@android:color/black"
                     android:textSize="@dimen/sp_16"
@@ -140,6 +163,27 @@
 
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/retrieveStatements"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true" />
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_10">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="@string/retrieve_balance"
+                    android:textColor="@android:color/black"
+                    android:textSize="@dimen/sp_16"
+                    style="@style/NormalTextStyle"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/retrieveBalance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true" />

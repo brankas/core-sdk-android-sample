@@ -33,8 +33,10 @@ import tap.model.BankCode
 import tap.model.Country
 import tap.model.DismissalDialog
 import tap.model.Reference
+import tap.model.balance.Account
 import tap.model.statement.Bank
 import tap.model.statement.Statement
+import tap.model.statement.StatementResponse
 import tap.request.statement.StatementRetrievalRequest
 import tap.request.statement.StatementTapRequest
 import java.util.*
@@ -65,6 +67,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var datePickerStart: DatePicker
     private lateinit var datePickerEnd: DatePicker
     private lateinit var checkout: AppCompatButton
+    private lateinit var enableLogging: SwitchCompat
+    private lateinit var retrieveBalance: SwitchCompat
 
     private var country = Country.UNKNOWN
 
@@ -97,6 +101,8 @@ class MainActivity : AppCompatActivity() {
         datePickerStart = findViewById(R.id.datePickerStart)
         datePickerEnd = findViewById(R.id.datePickerEnd)
         checkout = findViewById(R.id.checkout)
+        enableLogging = findViewById(R.id.enableLogging)
+        retrieveBalance = findViewById(R.id.retrieveBalance)
 
         checkout.isEnabled = false
         updateAPIKey()
@@ -113,23 +119,28 @@ class MainActivity : AppCompatActivity() {
         subscriber?.let { it.dispose() }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if(requestCode == 2000) {
             if(resultCode == RESULT_OK) {
-                val statements = data?.getParcelableExtra<Reference<List<Statement>>>(
+                val statementResponse = data?.getParcelableExtra<Reference<StatementResponse>>(
                     StatementTapSDK.STATEMENTS)
                 val transactionList = mutableListOf<TransactionItemViewModel>()
                 var statementId = ""
 
-                statements?.get?.let { list ->
-                    list.forEach {
-                        statementId = it.id
-                        it.transactions.forEach { transaction ->
-                            transactionList.add(TransactionItemViewModel(transaction, it.account,
-                                false))
+                statementResponse?.get?.let { response ->
+                    response.statementList?.let {
+                        statementId = response.statementId
+                        it.forEach {
+                            it.transactions.forEach { transaction ->
+                                transactionList.add(TransactionItemViewModel(transaction, it.account,
+                                    false))
+                            }
                         }
+                    } ?: run {
+                        statementId = response.statementId
                     }
                 } ?: run {
                     statementId = data?.getStringExtra(StatementTapSDK.STATEMENT_ID)!!
@@ -162,12 +173,19 @@ class MainActivity : AppCompatActivity() {
                 val dialog = dialogBuilder.create()
                 dialog.show()
 
+                val accounts: List<Account>? = statementResponse?.get?.accountList
                 closeButton.setOnClickListener {
                     dialog.dismiss()
+                    accounts?.let {
+                        showAccounts(it)
+                    }
                 }
 
                 downloadButton.setOnClickListener {
                     dialog.dismiss()
+                    accounts?.let {
+                        showAccounts(it)
+                    }
                     StatementTapSDK.downloadStatement(this@MainActivity, statementId,
                         object: CoreListener<Pair<String?, ByteArray>> {
                             override fun onResult(data: Pair<String?, ByteArray>?, error: CoreError?) {
@@ -224,31 +242,7 @@ class MainActivity : AppCompatActivity() {
                 if (selected == country) return
 
                 country = selected
-                bankItems.clear()
-                lstBanks.adapter?.notifyDataSetChanged()
-                lstCorpBanks.adapter?.notifyDataSetChanged()
-
-                StatementTapSDK.initialize(this@MainActivity, apiKey.text.toString(), null, false)
-                StatementTapSDK.getEnabledBanks(country, object : CoreListener<List<Bank>> {
-                    override fun onResult(data: List<Bank>?, error: CoreError?) {
-                        data?.let { banks ->
-                            bankItems.addAll(banks.sortedBy { it.title.lowercase() }.map {
-                                StatementBankItemViewModel(it)
-                            })
-                            lstBanks.adapter?.notifyDataSetChanged()
-                            lstCorpBanks.adapter?.notifyDataSetChanged()
-                            if (scrollToBottom) {
-                                scrollView.postDelayed({
-                                    scrollView.fullScroll(View.FOCUS_DOWN)
-                                }, 100)
-                            } else {
-                                scrollToBottom = true
-                            }
-                        } ?: run {
-                            Toast.makeText(this@MainActivity, error?.errorMessage.orEmpty(), Toast.LENGTH_LONG).show()
-                        }
-                    }
-                })
+                retrieveBanks()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -256,6 +250,34 @@ class MainActivity : AppCompatActivity() {
             }
         }
         countrySpinner.setSelection(1)
+    }
+
+    private fun retrieveBanks() {
+        bankItems.clear()
+        lstBanks.adapter?.notifyDataSetChanged()
+        lstCorpBanks.adapter?.notifyDataSetChanged()
+
+        StatementTapSDK.initialize(this@MainActivity, apiKey.text.toString(), null, false, enableLogging.isChecked)
+        StatementTapSDK.getEnabledBanks(country, retrieveBalance.isChecked, object : CoreListener<List<Bank>> {
+            override fun onResult(data: List<Bank>?, error: CoreError?) {
+                data?.let { banks ->
+                    bankItems.addAll(banks.sortedBy { it.title.lowercase() }.map {
+                        StatementBankItemViewModel(it)
+                    })
+                    lstBanks.adapter?.notifyDataSetChanged()
+                    lstCorpBanks.adapter?.notifyDataSetChanged()
+                    if (scrollToBottom) {
+                        scrollView.postDelayed({
+                            scrollView.fullScroll(View.FOCUS_DOWN)
+                        }, 100)
+                    } else {
+                        scrollToBottom = true
+                    }
+                } ?: run {
+                    Toast.makeText(this@MainActivity, error?.errorMessage.orEmpty(), Toast.LENGTH_LONG).show()
+                }
+            }
+        })
     }
 
     private fun addListeners() {
@@ -280,6 +302,10 @@ class MainActivity : AppCompatActivity() {
 
         retrieveStatements.setOnCheckedChangeListener { buttonView, isChecked ->
             statementRetrievalLayout.visibility = if(isChecked) View.VISIBLE else View.GONE
+        }
+
+        retrieveBalance.setOnCheckedChangeListener { buttonView, isChecked ->
+            retrieveBanks()
         }
 
         datePickerStart.setOnDateChangedListener { _, year, month, day ->
@@ -313,9 +339,10 @@ class MainActivity : AppCompatActivity() {
                         statementRetrievalRequest(statementRetrievalBuilder.build())
 
                     bankCodes(getBankCodes())
-                }.build()
+                }.includeBalance(retrieveBalance.isChecked)
+                .build()
 
-            StatementTapSDK.initialize(this, apiKey.text.toString(), null, false)
+            StatementTapSDK.initialize(this, apiKey.text.toString(), null, false, enableLogging.isChecked)
             StatementTapSDK.checkout(this, request, object:
                 CoreListener<String?> {
                 override fun onResult(data: String?, error: CoreError?) {
@@ -357,6 +384,26 @@ class MainActivity : AppCompatActivity() {
             return false
 
         return true
+    }
+
+    private fun showAccounts(accounts: List<Account>) {
+        val dialogBuilder = AlertDialog.Builder(this)
+        val stringBuilder = StringBuilder()
+
+        accounts.forEach {
+            stringBuilder.append("Account: ${it.holderName} - ${it.number}: " +
+                    "${it.balance.currency}${it.balance.numInCents.toLong() / 100}")
+            stringBuilder.appendLine()
+        }
+
+        dialogBuilder.setMessage(stringBuilder.toString())
+            .setCancelable(false)
+            .setPositiveButton("OK") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+            }
+
+        val alert = dialogBuilder.create()
+        alert.show()
     }
 
 }
