@@ -38,6 +38,7 @@ import java.util.*
 class MainActivity : FragmentActivity() {
     // Checkout
     private lateinit var useRememberMe: SwitchCompat
+    private lateinit var enableLogging: SwitchCompat
     private lateinit var showActionBar: SwitchCompat
     private lateinit var actionBarText: TextInputEditText
     private lateinit var enableExpiryDate: SwitchCompat
@@ -57,6 +58,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var logoURLLayout: TextInputLayout
     private lateinit var logoURL: TextInputEditText
     private lateinit var countrySpinner: AppCompatSpinner
+    private lateinit var languageSpinner: AppCompatSpinner
     private lateinit var destinationBankLayout: LinearLayout
     private lateinit var destinationBankSpinner: AppCompatSpinner
     private lateinit var sourceBankLayout: LinearLayout
@@ -75,6 +77,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var searchBySpinner: AppCompatSpinner
 
     private var country = Country.PH
+    private var language = Language.ENGLISH
     private var banks = ArrayList<Bank>()
     private var selectedDestBank: Bank? = null
     private var selectedSourceBank: Bank? = null
@@ -194,6 +197,7 @@ class MainActivity : FragmentActivity() {
         logoURLLayout = findViewById(R.id.logoURLLayout)
         logoURL = findViewById(R.id.logoURL)
         countrySpinner = findViewById(R.id.countrySpinner)
+        languageSpinner = findViewById(R.id.languageSpinner)
         destinationBankLayout = findViewById(R.id.destinationBankLayout)
         destinationBankSpinner = findViewById(R.id.destinationBankSpinner)
         sourceBankLayout = findViewById(R.id.sourceBankLayout)
@@ -202,6 +206,7 @@ class MainActivity : FragmentActivity() {
         datePicker = findViewById(R.id.datePicker)
         timePicker = findViewById(R.id.timePicker)
         checkout = findViewById(R.id.checkout)
+        enableLogging = findViewById(R.id.enableLogging)
 
         menuSpinner = findViewById(R.id.menuSpinner)
 
@@ -219,12 +224,14 @@ class MainActivity : FragmentActivity() {
 
         updateAPIKey()
         initCountrySpinner()
+        initLanguageSpinner()
         initMenuSpinner()
         addListeners()
 
         addSearchListeners()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if(requestCode == 3000) {
@@ -304,6 +311,26 @@ class MainActivity : FragmentActivity() {
         countrySpinner.setSelection(1)
     }
 
+    private fun initLanguageSpinner() {
+        val dataAdapter = ArrayAdapter.createFromResource(this, R.array.languages,
+            R.layout.item_spinner)
+        languageSpinner.adapter = dataAdapter
+        languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int,
+                                        id: Long) {
+                language = when(position) {
+                    0 -> Language.ENGLISH
+                    else -> Language.INDONESIAN
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+            }
+        }
+        languageSpinner.setSelection(0)
+    }
+
     private fun initBankSpinner() {
         val bankList = if (Country.ID == country) idBanks else phBanks
         destBankSpinnerAdapter = BankSpinnerItemAdapter(this, bankList)
@@ -325,7 +352,7 @@ class MainActivity : FragmentActivity() {
                     sourceBankLayout.visibility = View.VISIBLE
                 }
 
-                DirectTapSDK.initialize(this@MainActivity, apiKey.text.toString(), isDebug = false)
+                DirectTapSDK.initialize(this@MainActivity, apiKey.text.toString(), isDebug = false, isLoggingEnabled = enableLogging.isChecked)
                 DirectTapSDK.getSourceBanks(country, bankCode, object:
                     CoreListener<List<Bank>> {
                     override fun onResult(data: List<Bank>?, error: CoreError?) {
@@ -398,7 +425,7 @@ class MainActivity : FragmentActivity() {
         }
 
         retrieve.setOnClickListener {
-            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false)
+            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false, isLoggingEnabled = enableLogging.isChecked)
             DirectTapSDK.getLastTransaction(object : CoreListener<Transaction?> {
                 override fun onResult(data: Transaction?, error: CoreError?) {
                     showTransaction(data, error)
@@ -407,7 +434,7 @@ class MainActivity : FragmentActivity() {
         }
 
         search.setOnClickListener {
-            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false)
+            DirectTapSDK.initialize(this, apiKeySearch.text.toString(), isDebug = false, isLoggingEnabled = enableLogging.isChecked)
             if (searchBy == 0) {
                 DirectTapSDK.getTransactionById(query.text?.toString().orEmpty(),
                     object : CoreListener<Transaction?> {
@@ -483,7 +510,7 @@ class MainActivity : FragmentActivity() {
                 .client(
                     Client(orgName.text.toString(),
                         if(enableLogoURL.isChecked) logoURL.text.toString() else null,
-                        successURL.text.toString(), failURL.text.toString())
+                        successURL.text.toString(), failURL.text.toString(), language = language)
                 )
                 .dismissalDialog(
                     DismissalDialog("Do you want to close the application?",
@@ -499,7 +526,7 @@ class MainActivity : FragmentActivity() {
                     set(Calendar.MINUTE, timePicker.minute)
                 })
 
-            DirectTapSDK.initialize(this, apiKey.text.toString(), isDebug = false)
+            DirectTapSDK.initialize(this, apiKey.text.toString(), isDebug = false, isLoggingEnabled = enableLogging.isChecked)
             DirectTapSDK.checkout(this, request.build(), object:
                 CoreListener<String?> {
                 override fun onResult(data: String?, error: CoreError?) {

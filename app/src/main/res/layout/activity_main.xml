@@ -80,6 +80,28 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_centerVertical="true"
+                        android:text="@string/enable_logging"
+                        android:textColor="@android:color/black"
+                        android:textSize="@dimen/sp_16"
+                        style="@style/NormalTextStyle"/>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/enableLogging"
+                        android:checked="true"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true" />
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_10">
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
                         android:text="@string/use_remember_me"
                         android:textColor="@android:color/black"
                         android:textSize="@dimen/sp_16"
@@ -172,6 +194,22 @@
                         android:layout_height="wrap_content"
                         android:layout_alignParentEnd="true" />
                 </RelativeLayout>
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/select_language"
+                    android:layout_marginTop="@dimen/dp_10"
+                    android:textColor="@android:color/black"
+                    android:textSize="@dimen/sp_16"
+                    style="@style/NormalTextStyle"/>
+
+                <androidx.appcompat.widget.AppCompatSpinner
+                    android:id="@+id/languageSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_4"
+                    android:background="@drawable/background_spinner" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
