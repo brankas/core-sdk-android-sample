@@ -1,5 +1,6 @@
 package com.brankas.testapp.activity;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Looper;
@@ -50,8 +51,10 @@ import tap.model.BankCode;
 import tap.model.Country;
 import tap.model.DismissalDialog;
 import tap.model.Reference;
+import tap.model.balance.Account;
 import tap.model.statement.Bank;
 import tap.model.statement.Statement;
+import tap.model.statement.StatementResponse;
 import tap.model.statement.Transaction;
 import tap.request.statement.StatementRetrievalRequest;
 import tap.request.statement.StatementTapRequest;
@@ -82,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
     private DatePicker datePickerStart;
     private DatePicker datePickerEnd;
     private AppCompatButton checkout;
+    private SwitchCompat enableLogging;
+    private SwitchCompat retrieveBalance;
 
     private Country country = Country.UNKNOWN;
 
@@ -115,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
         datePickerStart = findViewById(R.id.datePickerStart);
         datePickerEnd = findViewById(R.id.datePickerEnd);
         checkout = findViewById(R.id.checkout);
+        enableLogging = findViewById(R.id.enableLogging);
+        retrieveBalance = findViewById(R.id.retrieveBalance);
 
         checkout.setEnabled(false);
         updateAPIKey();
@@ -149,20 +156,22 @@ public class MainActivity extends AppCompatActivity {
 
         if (null == data) return;
 
-        Reference<List<Statement>> statements = data.getParcelableExtra(StatementTapSDK.STATEMENTS);
+        Reference<StatementResponse> statementResponse = data.getParcelableExtra(StatementTapSDK.STATEMENTS);
         ArrayList<TransactionItemViewModel> transactionList = new ArrayList();
         String statementId = "";
 
-        if (null != statements && null != statements.getGet()) {
-            List<Statement> list = statements.getGet();
-            for (Statement item : list) {
-                statementId = item.getId();
-                for (Transaction transaction : item.getTransactions()) {
-                    transactionList.add(new TransactionItemViewModel(transaction, item.getAccount(), false));
+        if(statementResponse != null) {
+            List<Statement> statements = statementResponse.getGet().getStatementList();
+            if (statements != null) {
+                for (Statement item : statements) {
+                    statementId = item.getId();
+                    for (Transaction transaction : item.getTransactions()) {
+                        transactionList.add(new TransactionItemViewModel(transaction, item.getAccount(), false));
+                    }
                 }
+            } else {
+                statementId = (null != data.getStringExtra(StatementTapSDK.STATEMENT_ID)) ? data.getStringExtra(StatementTapSDK.STATEMENT_ID) : "";
             }
-        } else {
-            statementId = (null != data.getStringExtra(StatementTapSDK.STATEMENT_ID)) ? data.getStringExtra(StatementTapSDK.STATEMENT_ID) : "";
         }
 
         transactionList.sort(Comparator.comparing(TransactionItemViewModel::getDateString));
@@ -190,13 +199,20 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = dialogBuilder.create();
         dialog.show();
 
+        List<Account> accounts = statementResponse != null ?
+                statementResponse.getGet().getAccountList() : null;
+
         closeButton.setOnClickListener(view -> {
             dialog.dismiss();
+            if(accounts != null)
+                showAccounts(accounts);
         });
 
         String finalStatementId = statementId;
         downloadButton.setOnClickListener(view -> {
             dialog.dismiss();
+            if(accounts != null)
+                showAccounts(accounts);
             StatementTapSDK.INSTANCE.downloadStatement(this, finalStatementId, (CoreListener<Pair<String, byte[]>>) (pair, error) -> {
                 if (null != error) {
                     if (null == Looper.myLooper())
@@ -240,33 +256,7 @@ public class MainActivity extends AppCompatActivity {
                 if (selected == country) return;
 
                 country = selected;
-                bankItems.clear();
-                lstBanks.getAdapter().notifyDataSetChanged();
-                lstCorpBanks.getAdapter().notifyDataSetChanged();
-
-                StatementTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
-                StatementTapSDK.INSTANCE.getEnabledBanks(country, new CoreListener<List<Bank>>() {
-                    @Override
-                    public void onResult(@Nullable List<Bank> banks, @Nullable CoreError error) {
-                        if (null == banks) {
-                            String message = (null != error && null != error.getErrorMessage()) ? error.getErrorMessage() : "";
-                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
-                            return;
-                        }
-
-                        banks.sort(Comparator.comparing(bank -> bank.getTitle().toLowerCase()));
-                        for (Bank bank : banks) {
-                            bankItems.add(new StatementBankItemViewModel(bank, true));
-                        }
-                        lstBanks.getAdapter().notifyDataSetChanged();
-                        lstCorpBanks.getAdapter().notifyDataSetChanged();
-                        if (scrollToBottom) {
-                            scrollView.postDelayed(() -> scrollView.fullScroll(View.FOCUS_DOWN), 100);
-                        } else {
-                            scrollToBottom = true;
-                        }
-                    }
-                });
+                retrieveBanks();
             }
 
             @Override
@@ -276,6 +266,33 @@ public class MainActivity extends AppCompatActivity {
         });
 
         countrySpinner.setSelection(1);
+    }
+
+    private void retrieveBanks() {
+        bankItems.clear();
+        lstBanks.getAdapter().notifyDataSetChanged();
+        lstCorpBanks.getAdapter().notifyDataSetChanged();
+
+        StatementTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false, enableLogging.isChecked());
+        StatementTapSDK.INSTANCE.getEnabledBanks(country, retrieveBalance.isChecked(), (CoreListener<List<Bank>>) (banks, error) -> {
+            if (null == banks) {
+                String message = (null != error && null != error.getErrorMessage()) ? error.getErrorMessage() : "";
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            banks.sort(Comparator.comparing(bank -> bank.getTitle().toLowerCase()));
+            for (Bank bank : banks) {
+                bankItems.add(new StatementBankItemViewModel(bank, true));
+            }
+            lstBanks.getAdapter().notifyDataSetChanged();
+            lstCorpBanks.getAdapter().notifyDataSetChanged();
+            if (scrollToBottom) {
+                scrollView.postDelayed(() -> scrollView.fullScroll(View.FOCUS_DOWN), 100);
+            } else {
+                scrollToBottom = true;
+            }
+        });
     }
 
     private void addListeners() {
@@ -315,6 +332,10 @@ public class MainActivity extends AppCompatActivity {
             statementRetrievalLayout.setVisibility(isChecked ? View.VISIBLE : View.GONE);
         });
 
+        retrieveBalance.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            retrieveBanks();
+        });
+
         datePickerStart.setOnDateChangedListener((datePicker, year, month, day) -> {
             Calendar cal = Calendar.getInstance();
             cal.set(year, month, day);
@@ -343,15 +364,15 @@ public class MainActivity extends AppCompatActivity {
                                                 "Yes", "No")
                     );
 
-
             if(retrieveStatements.isChecked())
                 builder.statementRetrievalRequest(statementRetrievalBuilder.build());
 
             builder.bankCodes(getBankCodes());
+            builder.setIncludeBalance(retrieveBalance.isChecked());
 
             StatementTapRequest request = builder.build();
 
-            StatementTapSDK.INSTANCE.initialize(this, apiKey.getText().toString(), null, false);
+            StatementTapSDK.INSTANCE.initialize(this, apiKey.getText().toString(), null, false, enableLogging.isChecked());
             StatementTapSDK.INSTANCE.checkout(this, request, (CoreListener<String>) (data, error) -> {
                 if (null != error) {
                     Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
@@ -397,4 +418,23 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    private void showAccounts(List<Account> accounts) {
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for(Account account: accounts) {
+            stringBuilder.append("Account: "+account.getHolderName()+ " - " +account.getNumber()+": " +
+                    account.getBalance().getCurrency().name()+""+(Long.parseLong(
+                            account.getBalance().getNumInCents()) / 100));
+            stringBuilder.append("\n");
+        }
+
+        dialogBuilder.setMessage(stringBuilder.toString())
+                .setCancelable(false)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    dialog.dismiss();
+                });
+
+        dialogBuilder.create().show();
+    }
 }
