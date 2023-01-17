@@ -15,4 +15,9 @@
         <item>Reference ID</item>
     </string-array>
 
+    <string-array name="languages">
+        <item>English</item>
+        <item>Indonesian</item>
+    </string-array>
+
 </resources>

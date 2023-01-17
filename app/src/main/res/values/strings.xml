@@ -29,4 +29,6 @@
     <string name="search_by">Search By</string>
     <string name="search">Search</string>
     <string name="retrieve_last_transaction">Retrieve Last Transaction</string>
+    <string name="enable_logging">Enable Logging</string>
+    <string name="select_language">Select Language</string>
 </resources>

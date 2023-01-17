@@ -51,6 +51,7 @@ import tap.model.direct.Client;
 import tap.model.direct.Customer;
 import tap.model.direct.FundTransferFee;
 import tap.model.direct.FundTransferLimit;
+import tap.model.direct.Language;
 import tap.model.direct.Transaction;
 import tap.request.direct.DirectTapRequest;
 
@@ -67,6 +68,7 @@ public class MainActivity extends FragmentActivity {
     private TextInputEditText actionBarText;
     private SwitchCompat enableExpiryDate;
     private SwitchCompat enableLogoURL;
+    private SwitchCompat enableLogging;
     private TextInputEditText apiKey;
     private TextInputEditText firstName;
     private TextInputEditText lastName;
@@ -82,6 +84,7 @@ public class MainActivity extends FragmentActivity {
     private TextInputLayout logoURLLayout;
     private TextInputEditText logoURL;
     private AppCompatSpinner countrySpinner;
+    private AppCompatSpinner languageSpinner;
     private LinearLayout destinationBankLayout;
     private AppCompatSpinner destinationBankSpinner;
     private LinearLayout sourceBankLayout;
@@ -100,6 +103,7 @@ public class MainActivity extends FragmentActivity {
     private AppCompatSpinner searchBySpinner;
 
     private Country country = Country.PH;
+    private Language language = Language.ENGLISH;
     private ArrayList<Bank> banks = new ArrayList();
     private Bank selectedDestBank;
     private Bank selectedSourceBank;
@@ -184,6 +188,7 @@ public class MainActivity extends FragmentActivity {
         logoURLLayout = findViewById(R.id.logoURLLayout);
         logoURL = findViewById(R.id.logoURL);
         countrySpinner = findViewById(R.id.countrySpinner);
+        languageSpinner = findViewById(R.id.languageSpinner);
         destinationBankLayout = findViewById(R.id.destinationBankLayout);
         destinationBankSpinner = findViewById(R.id.destinationBankSpinner);
         sourceBankLayout = findViewById(R.id.sourceBankLayout);
@@ -192,6 +197,7 @@ public class MainActivity extends FragmentActivity {
         datePicker = findViewById(R.id.datePicker);
         timePicker = findViewById(R.id.timePicker);
         checkout = findViewById(R.id.checkout);
+        enableLogging = findViewById(R.id.enableLogging);
 
         menuSpinner = findViewById(R.id.menuSpinner);
 
@@ -209,6 +215,7 @@ public class MainActivity extends FragmentActivity {
 
         updateAPIKey();
         initCountrySpinner();
+        initLanguageSpinner();
         initMenuSpinner();
         addListeners();
         addSearchListeners();
@@ -295,6 +302,23 @@ public class MainActivity extends FragmentActivity {
         });
     }
 
+    private void initLanguageSpinner() {
+        ArrayAdapter dataAdapter = ArrayAdapter.createFromResource(this, R.array.languages, R.layout.item_spinner);
+        languageSpinner.setAdapter(dataAdapter);
+        languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long l) {
+                if (0 == position) language = Language.ENGLISH;
+                else language = Language.INDONESIAN;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+    }
+
     private void initBankSpinner() {
         Bank[] bankList = Country.ID == country ? idBanks : phBanks;
         destBankSpinnerAdapter = new BankSpinnerItemAdapter(this, Arrays.asList(bankList));
@@ -318,7 +342,7 @@ public class MainActivity extends FragmentActivity {
                     sourceBankLayout.setVisibility(View.VISIBLE);
                 }
 
-                DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
+                DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false, enableLogging.isChecked());
                 DirectTapSDK.INSTANCE.getSourceBanks(country, bankCode, (CoreListener<List<Bank>>) (data, error) -> {
                     if (null == data) {
                         String message = (null != error && null != error.getErrorMessage()) ? error.getErrorMessage() : "";
@@ -412,14 +436,14 @@ public class MainActivity extends FragmentActivity {
 
 
         retrieve.setOnClickListener(view -> {
-            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false);
+            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false, enableLogging.isChecked());
             DirectTapSDK.INSTANCE.getLastTransaction((CoreListener<Transaction>) (transaction, coreError) -> {
                 showTransaction(transaction, coreError);
             });
         });
 
         search.setOnClickListener(view -> {
-            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false);
+            DirectTapSDK.INSTANCE.initialize(this, apiKeySearch.getText().toString(), null, false, enableLogging.isChecked());
             if(searchBy == 0)
                 DirectTapSDK.INSTANCE.getTransactionById(query.getText().toString(),
                     (CoreListener<Transaction>) (transaction, coreError) -> {
@@ -509,8 +533,8 @@ public class MainActivity extends FragmentActivity {
                     .client(
                             new Client(orgName.getText().toString(),
                                     enableLogoURL.isChecked() ? logoURL.getText().toString() : null,
-                                    successURL.getText().toString(), failURL.getText().toString(), false
-                            )
+                                    successURL.getText().toString(), failURL.getText().toString(),
+                                    false, language)
                      )
                     .dismissalDialog(
                             new DismissalDialog("Do you want to close the application?", "Yes", "No")
@@ -526,7 +550,7 @@ public class MainActivity extends FragmentActivity {
                 request.setExpiryDate(cal);
             }
 
-            DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false);
+            DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false, enableLogging.isChecked());
             DirectTapSDK.INSTANCE.checkout(MainActivity.this, request.build(), (CoreListener<String>) (data, error) -> {
                 if (null != error) {
                     Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
