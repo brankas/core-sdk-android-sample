@@ -555,7 +555,7 @@ public class MainActivity extends FragmentActivity {
                 if (null != error) {
                     Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
                 }
-            }, 3000, useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null);
+            }, 3000, useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null, true);
         });
     }
 

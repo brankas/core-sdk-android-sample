@@ -2,6 +2,88 @@
 
 All notable changes to this project will be documented in this file.
 
+## 4.1.0 - 2023-02-21
+
+### Added
+
+- **showBackButton** parameter in **checkout()** function to enable showing of a back button within the ActionBar
+- function **closeTap()** to deliberately close the Tap Web App
+- function **refreshTap()** to reload the current web page being shown within Tap Web App
+- auto-refresh mechanism wherein the web page automatically reloads when Internet Connection has been restored
+- detection when user is disconnected from the Internet when inside the Tap Web App
+
+## 4.0.0 - 2023-01-16
+
+### Added
+
+-  **language** under **Client** in **DirectTapRequest** to be able to change the language within Tap Web App (default value is English)
+-  optional internal logging to monitor API Service Calls and Tap Web Screen Flow
+-  **isLoggingEnabled** within **initialize()** function to choose whether to enable or disable sending of logs; default value is true
+
+### Changed
+
+- Kotlin version from **1.5.1** to **1.7.1**
+
+## 3.5.2 - 2022-10-21
+
+### Fixed
+
+- crash when a new Destination **BankCode** is added from **getSourceBanks()** function  
+- crash Application attempted to call on a destroyed WebView for some Android devices
+
+### Added
+
+- added **isEnabled** field in **Bank** to determine if bank is enabled or not as a source bank for bank transfer
+
+## 3.5.1 - 2022-08-29
+
+### Fixed
+
+- crash when passing an unknown **BankCode** to **checkout()** function
+- crash when a new **BankCode** is added from **getSourceBanks()** function 
+
+### Changed
+
+- prohibited manual creation of **BankCode**
+
+## 3.5.0 - 2022-07-25
+
+### Fixed
+
+- crash when passing an unlisted **BankCode** gotten from **getSourceBanks()** function to **checkout()** function
+- empty checkout URL when calling **retrieveCheckoutURL()** function
+
+### Added
+- **getTransactionById()** function to search for a transaction by passing the transaction id
+- **getTransactionByReferenceId()** function to search for a transaction by passing the reference id
+- **getLastTransaction()** function to retrieve the last transaction performed by the user  (internal only; thus, when user changes device or clears the cache, last transaction will not be returned)
+
+## 3.4.0 - 2022-05-27
+
+### Added
+- **isCorporate** field in **Bank**
+
+### Changed
+-  minimum SDK version from **17** to **21**
+-  sorted returned banks from **getSourceBanks()** function
+-  **rxjava** version from **3.0.0** to **3.0.6**
+-  **protobufjavalite** version from **3.19.0-rc-1** to **3.20.0**
+-  **gRPC** version from **1.41.0** to **1.45.1**
+
+## 3.3.0 - 2022-04-27
+
+### Added
+
+-  **LandBank** and **EastWest** Banks in **BankCode** enum list
+-  updating of ActionBar text via **checkout** function; if null is sent, the ActionBar will be hidden
+
+## 3.2.0 - 2022-04-08
+
+### Changed
+
+-  package from **tap.common** to **tap.model**
+-  **Bank logoUrl** format from **SVG** to **PNG** 
+
 ## 3.1.0 - 2022-03-28
 
 ### Changed
