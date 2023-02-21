@@ -8,16 +8,6 @@
     android:background="@android:color/white"
     tools:context=".activity.MainActivity">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/dp_50"
-        android:text="@string/app_name"
-        android:gravity="center"
-        android:background="@color/colorPrimary"
-        android:textColor="@android:color/white"
-        android:fontFamily="@font/lato_regular"
-        android:textSize="@dimen/sp_16"/>
-
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"

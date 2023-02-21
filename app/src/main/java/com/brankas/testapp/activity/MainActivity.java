@@ -377,7 +377,7 @@ public class MainActivity extends AppCompatActivity {
                 if (null != error) {
                     Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
                 }
-            }, 2000, enableAutoConsent.isChecked(), useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null);
+            }, 2000, enableAutoConsent.isChecked(), useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null, true);
         });
     }
 
