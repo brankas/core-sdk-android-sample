@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private AppCompatButton checkout;
     private SwitchCompat enableLogging;
     private SwitchCompat retrieveBalance;
+    private SwitchCompat enablePdfUpload;
 
     private Country country = Country.UNKNOWN;
 
@@ -122,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
         checkout = findViewById(R.id.checkout);
         enableLogging = findViewById(R.id.enableLogging);
         retrieveBalance = findViewById(R.id.retrieveBalance);
+        enablePdfUpload = findViewById(R.id.enablePdfUpload);
 
         checkout.setEnabled(false);
         updateAPIKey();
@@ -369,6 +371,7 @@ public class MainActivity extends AppCompatActivity {
 
             builder.bankCodes(getBankCodes());
             builder.setIncludeBalance(retrieveBalance.isChecked());
+            builder.setHasPdfUpload(enablePdfUpload.isChecked());
 
             StatementTapRequest request = builder.build();
 

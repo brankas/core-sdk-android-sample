@@ -178,6 +178,27 @@
                     android:layout_alignParentEnd="true" />
             </RelativeLayout>
 
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_10">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="@string/enable_pdf_upload"
+                    android:textColor="@android:color/black"
+                    android:textSize="@dimen/sp_16"
+                    style="@style/NormalTextStyle"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/enablePdfUpload"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true" />
+            </RelativeLayout>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
