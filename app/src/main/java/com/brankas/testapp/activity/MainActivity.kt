@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var checkout: AppCompatButton
     private lateinit var enableLogging: SwitchCompat
     private lateinit var retrieveBalance: SwitchCompat
+    private lateinit var enablePdfUpload: SwitchCompat
 
     private var country = Country.UNKNOWN
 
@@ -103,6 +104,7 @@ class MainActivity : AppCompatActivity() {
         checkout = findViewById(R.id.checkout)
         enableLogging = findViewById(R.id.enableLogging)
         retrieveBalance = findViewById(R.id.retrieveBalance)
+        enablePdfUpload = findViewById(R.id.enablePdfUpload)
 
         checkout.isEnabled = false
         updateAPIKey()
@@ -340,6 +342,7 @@ class MainActivity : AppCompatActivity() {
 
                     bankCodes(getBankCodes())
                 }.includeBalance(retrieveBalance.isChecked)
+                .hasPdfUpload(enablePdfUpload.isChecked)
                 .build()
 
             StatementTapSDK.initialize(this, apiKey.text.toString(), null, false, enableLogging.isChecked)
