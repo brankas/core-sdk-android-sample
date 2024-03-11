@@ -553,7 +553,7 @@ public class MainActivity extends FragmentActivity {
             DirectTapSDK.INSTANCE.initialize(MainActivity.this, apiKey.getText().toString(), null, false, enableLogging.isChecked());
             DirectTapSDK.INSTANCE.checkout(MainActivity.this, request.build(), (CoreListener<String>) (data, error) -> {
                 if (null != error) {
-                    Toast.makeText(MainActivity.this, error.getErrorMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, error.getErrorCode().getCode() + " " + error.getErrorCode().getErrorMessage(), Toast.LENGTH_LONG).show();
                 }
             }, 3000, useRememberMe.isChecked(), showActionBar.isChecked() ? actionBarText.getText().toString() : null, true);
         });
